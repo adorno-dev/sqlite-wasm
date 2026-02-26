@@ -2,15 +2,12 @@ use futures_channel::oneshot;
 use js_sys::{Array, Object, Reflect};
 use js_sys::Promise;
 use std::cell::RefCell;
-use std::fs::{File, create_dir_all};
-use std::io::Write;
 use std::rc::Rc;
 use uuid::Uuid;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{JsFuture, future_to_promise};
-use web_sys::{MessageEvent, Request, RequestInit, Response, Worker, window};
-use std::path::Path;
+use web_sys::{MessageEvent, Worker, window};
 
 thread_local! {
     static WORKER: RefCell<Option<Worker>> = RefCell::new(None);
