@@ -1,0 +1,48 @@
+[package]
+name = "sqlite_wasm"
+description = "A simgle wasm to work with sqlite-wasm (official)"
+version = "0.1.0"
+edition = "2024"
+authors = ["adorno-dev <adorno.dev@gmail.com>"]
+repository = "https://github.com/adorno-dev/sqlite_wasm"
+# license = "MIT"
+# readme = "README.md"
+categories = ["wasm"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = { version= "0.3.60" }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1.7"
+uuid = { version = "1.21.0", features = ["v4", "js"] }
+futures-channel = "0.3.32"
+
+[dependencies.web-sys]
+version = "0.3.90"
+features = [
+    "Worker",
+    "Window",
+    "console",
+    "MessageEvent",
+    "EventTarget",
+    "Blob",
+    "Url",
+    "RequestInit",
+    "Request",
+    "Response",
+    "Touch"
+]
+
+# [profile.release]
+# opt-level = "z"   # Opcionais: "s" para size, "z" para agressivo
+# lto = true        # Ativar LTO (Link Time Optimization)
+# codegen-units = 1 # Reduzir o número de unidades de código
+# strip = true      # Remover dados de depuração
+
+# [package.metadata.wasm-pack]
+# wasm-opt = false
