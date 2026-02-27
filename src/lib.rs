@@ -228,7 +228,7 @@ pub fn get_worker() -> Worker {
 /// Executa comando sem retorno
 #[wasm_bindgen]
 pub async fn exec(sql: String, bind: Array) -> Result<(), JsValue> {
-    let (worker, db_id) = get_worker_and_db_id()?;
+    let (worker, db_id) = get_worker_and_db_id().await?;
 
     let args = Object::new();
     Reflect::set(&args, &"dbId".into(), &db_id)?;
@@ -242,7 +242,7 @@ pub async fn exec(sql: String, bind: Array) -> Result<(), JsValue> {
 /// Executa comando que retorna linhas
 #[wasm_bindgen]
 pub async fn query(sql: String, bind: Option<Array>) -> Result<JsValue, JsValue> {
-    let (worker, db_id) = get_worker_and_db_id()?;
+    let (worker, db_id) = get_worker_and_db_id().await?;
 
     let args = Object::new();
     Reflect::set(&args, &"dbId".into(), &db_id)?;
@@ -265,13 +265,35 @@ pub async fn query(sql: String, bind: Option<Array>) -> Result<JsValue, JsValue>
     Ok(result_rows)
 }
 
-/// Recupera worker e dbId global
-fn get_worker_and_db_id() -> Result<(Worker, JsValue), JsValue> {
-    let worker = WORKER
-        .with(|w| w.borrow().clone())
+// /// Recupera worker e dbId global
+// fn get_worker_and_db_id() -> Result<(Worker, JsValue), JsValue> {
+//     let worker = WORKER
+//         .with(|w| w.borrow().clone())
+//         .ok_or_else(|| JsValue::from_str("Worker not initialized"))?;
+//     let db_id = DB_ID
+//         .with(|d| d.borrow().clone())
+//         .ok_or_else(|| JsValue::from_str("DB not initialized"))?;
+//     Ok((worker, db_id))
+// }
+
+async fn get_worker_and_db_id() -> Result<(Worker, JsValue), JsValue> {  // ← ASYNC AGORA!
+    let worker = WORKER.with(|w| w.borrow().clone())
         .ok_or_else(|| JsValue::from_str("Worker not initialized"))?;
-    let db_id = DB_ID
-        .with(|d| d.borrow().clone())
-        .ok_or_else(|| JsValue::from_str("DB not initialized"))?;
+    
+    // Se não tiver DB_ID, tenta obter de novo?
+    let db_id = match DB_ID.with(|d| d.borrow().clone()) {
+        Some(id) => id,
+        None => {
+            // Tenta inicializar AGORA
+            match init_db().await {  // ← AWAIT OK AGORA!
+                Ok(id) => {
+                    DB_ID.with(|d| *d.borrow_mut() = Some(id.clone()));
+                    id
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    };
+    
     Ok((worker, db_id))
 }
