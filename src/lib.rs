@@ -223,6 +223,17 @@ pub async fn init_db() -> Result<JsValue, JsValue> {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 // Função assíncrona de sleep no Rust/WASM
 pub async fn sleep(ms: i32) {
     let promise = Promise::new(&mut |resolve, _reject| {
