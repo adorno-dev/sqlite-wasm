@@ -3,15 +3,25 @@ use js_sys::{Array, Object, Reflect};
 use js_sys::Promise;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Mutex;
 use uuid::Uuid;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{JsFuture, future_to_promise};
 use web_sys::{MessageEvent, Worker, window};
+use once_cell::sync::Lazy;
 
+// ===================================================
+// GLOBAL DATABASE ID (ÚNICO PARA TODAS AS THREADS)
+// ===================================================
+static GLOBAL_DB_ID: Lazy<Mutex<Option<JsValue>>> = Lazy::new(|| {
+    Mutex::new(None)
+});
+
+// WORKER continua thread_local (cada thread pode ter seu worker)
 thread_local! {
     static WORKER: RefCell<Option<Worker>> = RefCell::new(None);
-    static DB_ID: RefCell<Option<JsValue>> = RefCell::new(None);
+    // DB_ID FOI REMOVIDO DAQUI!
 }
 
 pub fn w_msg(worker: Worker, msg_type: String, args: JsValue) -> js_sys::Promise {
@@ -96,6 +106,11 @@ pub fn w_msg(worker: Worker, msg_type: String, args: JsValue) -> js_sys::Promise
 }
 
 pub async fn init_db() -> Result<JsValue, JsValue> {
+    // Se já tem DB_ID global, retorna (evita múltiplas aberturas)
+    if let Some(id) = GLOBAL_DB_ID.lock().unwrap().clone() {
+        return Ok(id);
+    }
+    
     let worker = get_worker();
 
     // =========================
@@ -121,7 +136,8 @@ pub async fn init_db() -> Result<JsValue, JsValue> {
         Reflect::get(&open_result, &"dbId".into()).unwrap_or(JsValue::NULL)
     };
 
-    DB_ID.with(|d| *d.borrow_mut() = Some(db_id.clone()));
+    // SALVA NO GLOBAL (não mais no thread_local)
+    *GLOBAL_DB_ID.lock().unwrap() = Some(db_id.clone());
     web_sys::console::log_2(&"DB opened with dbId:".into(), &db_id);
 
     // =========================
@@ -167,6 +183,7 @@ pub async fn sleep(ms: i32) {
     JsFuture::from(promise).await.unwrap();
 }
 
+#[wasm_bindgen]
 pub async fn start_interval() -> Result<(), JsValue> {
     let window = window().unwrap();
 
@@ -265,7 +282,7 @@ pub async fn query(sql: String, bind: Option<Array>) -> Result<JsValue, JsValue>
     Ok(result_rows)
 }
 
-// /// Recupera worker e dbId global
+// /// Recupera worker e dbId global (VERSÃO ANTIGA COMENTADA)
 // fn get_worker_and_db_id() -> Result<(Worker, JsValue), JsValue> {
 //     let worker = WORKER
 //         .with(|w| w.borrow().clone())
@@ -276,20 +293,18 @@ pub async fn query(sql: String, bind: Option<Array>) -> Result<JsValue, JsValue>
 //     Ok((worker, db_id))
 // }
 
-async fn get_worker_and_db_id() -> Result<(Worker, JsValue), JsValue> {  // ← ASYNC AGORA!
+/// Recupera worker e dbId global (NOVA VERSÃO COM GLOBAL)
+async fn get_worker_and_db_id() -> Result<(Worker, JsValue), JsValue> {
     let worker = WORKER.with(|w| w.borrow().clone())
         .ok_or_else(|| JsValue::from_str("Worker not initialized"))?;
     
-    // Se não tiver DB_ID, tenta obter de novo?
-    let db_id = match DB_ID.with(|d| d.borrow().clone()) {
+    // Usa o GLOBAL_DB_ID (único para todas as threads)
+    let db_id = match GLOBAL_DB_ID.lock().unwrap().clone() {
         Some(id) => id,
         None => {
             // Tenta inicializar AGORA
-            match init_db().await {  // ← AWAIT OK AGORA!
-                Ok(id) => {
-                    DB_ID.with(|d| *d.borrow_mut() = Some(id.clone()));
-                    id
-                }
+            match init_db().await {
+                Ok(id) => id,
                 Err(e) => return Err(e),
             }
         }

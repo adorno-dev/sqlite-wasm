@@ -7,8 +7,10 @@
 <body>
 
 <script type="module">
-    import init from "./pkg/sqlite_wasm.js";
+    import init, * as wasm from "./pkg/sqlite_wasm.js";
+    window.wasm = wasm;
     await init();
+    await wasm.start_interval();
 </script>
 
 </body>
