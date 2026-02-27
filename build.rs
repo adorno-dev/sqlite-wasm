@@ -23,74 +23,59 @@ use std::collections::HashMap;
 //     println!("cargo:rerun-if-changed=jswasm/");
 // }
 
+
 fn main() {
     let src_dir = Path::new("jswasm");
     let out_dir = env::var("OUT_DIR").unwrap();
     
     // ===================================================
-    // 1. SEMPRE: Copia jswasm para OUT_DIR
+    // 1. SEMPRE: Copia jswasm para OUT_DIR (é isso que você quer!)
     // ===================================================
     let dest_out = Path::new(&out_dir).join("jswasm");
-    if !dest_out.exists() {
-        fs::create_dir_all(&dest_out).unwrap();
-    }
+    fs::create_dir_all(&dest_out).unwrap();
     
     for entry in fs::read_dir(src_dir).unwrap() {
         let entry = entry.unwrap();
-        let src_path = entry.path();
-        let dest_path = dest_out.join(entry.file_name());
-        fs::copy(&src_path, &dest_path).unwrap();
+        fs::copy(entry.path(), dest_out.join(entry.file_name())).unwrap();
         println!("cargo:warning=📋 Copiado para OUT_DIR: {:?}", entry.file_name());
     }
     
+    println!("cargo:warning=✅ jswasm copiado para OUT_DIR: {:?}", dest_out);
+    
     // ===================================================
-    // 2. Se for uma DEPENDÊNCIA (importado por outro projeto)
+    // 2. SÓ COPIA PARA A RAIZ se for OUTRO PROJETO usando
     // ===================================================
+    // Só faz isso se NÃO for o projeto principal E se o diretório for diferente
     if env::var("CARGO_PRIMARY_PACKAGE").is_err() {
-        println!("cargo:warning=📦 Detectado: sendo usado como dependência!");
-        
-        // Encontra a raiz do projeto que está importando
+        // Verifica se está em um diretório diferente do projeto da crate
         if let Ok(current_dir) = env::current_dir() {
-            let mut project_root = current_dir.clone();
+            let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
             
-            // Sobe até encontrar Cargo.toml (raiz do projeto)
-            while !project_root.join("Cargo.toml").exists() {
-                if !project_root.pop() {
-                    break;
-                }
-            }
-            
-            if project_root.join("Cargo.toml").exists() {
-                // Copia de OUT_DIR para a raiz do projeto que importa
-                let dest_project = project_root.join("jswasm");  // /projeto-dele/jswasm
+            if current_dir != crate_dir {
+                println!("cargo:warning=📦 Detectado: projeto diferente!");
+                
+                // Aqui copia para a raiz do projeto que está importando
+                let dest_project = current_dir.join("jswasm");
                 fs::create_dir_all(&dest_project).unwrap();
                 
                 for entry in fs::read_dir(&dest_out).unwrap() {
                     let entry = entry.unwrap();
-                    let src_path = entry.path();
-                    let dest_path = dest_project.join(entry.file_name());
-                    fs::copy(&src_path, &dest_path).unwrap();
-                    println!("cargo:warning=📋 Copiado para RAIZ: {:?}", entry.file_name());
+                    fs::copy(entry.path(), dest_project.join(entry.file_name())).unwrap();
+                    println!("cargo:warning=📋 Copiado para raiz: {:?}", entry.file_name());
                 }
-                
-                println!("cargo:warning=✅ jswasm copiado para: {}/jswasm", project_root.display());
             }
         }
     }
     
     // ===================================================
-    // 3. Também copia para pkg/ (desenvolvimento local da crate)
+    // 3. Copia para pkg/ (desenvolvimento local)
     // ===================================================
     let dest_pkg = Path::new("pkg").join("jswasm");
-    if !dest_pkg.exists() {
-        fs::create_dir_all(&dest_pkg).unwrap();
-    }
+    fs::create_dir_all(&dest_pkg).unwrap();
     
     for entry in fs::read_dir(src_dir).unwrap() {
         let entry = entry.unwrap();
-        let src_path = entry.path();
-        let dest_path = dest_pkg.join(entry.file_name());
-        fs::copy(&src_path, &dest_path).unwrap();
+        fs::copy(entry.path(), dest_pkg.join(entry.file_name())).unwrap();
     }
     
     println!("cargo:rerun-if-changed=jswasm/");
