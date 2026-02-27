@@ -210,14 +210,15 @@ pub fn start() {
     });
 }
 
-// /// Obtém ou inicializa o worker global
+/// Versão 2: Com caminho físico (backup)
 pub fn get_worker() -> Worker {
     WORKER.with(|w| {
         if let Some(worker) = &*w.borrow() {
             worker.clone()
         } else {
-            let worker =
-                Worker::new("jswasm/sqlite3-worker1.js").expect("failed to create worker");
+            let worker = Worker::new("jswasm/sqlite3-worker1.js")
+                .expect("failed to create worker");
+            
             *w.borrow_mut() = Some(worker.clone());
             worker
         }
