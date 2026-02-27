@@ -203,12 +203,12 @@ pub async fn start_interval() -> Result<(), JsValue> {
     Ok(())
 }
 
-#[wasm_bindgen(start)]
-pub fn start() {
-    // wasm_bindgen_futures::spawn_local(async {
-    //     start_interval().await.unwrap();
-    // });
-}
+// #[wasm_bindgen(start)]
+// pub fn start() {
+//     wasm_bindgen_futures::spawn_local(async {
+//         start_interval().await.unwrap();
+//     });
+// }
 
 /// Versão 2: Com caminho físico (backup)
 pub fn get_worker() -> Worker {
