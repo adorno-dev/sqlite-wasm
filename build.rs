@@ -1,20 +1,21 @@
 use std::fs;
 use std::path::Path;
+use std::env;
 
 fn main() {
     let src_dir = Path::new("jswasm");
-    let dest_dir = Path::new("pkg/jswasm");
-
-    if !dest_dir.exists() {
-        fs::create_dir_all(dest_dir).unwrap();
-    }
-
+    let out_dir = env::var("OUT_DIR").unwrap();
+    
+    // Copia para OUT_DIR
+    let dest_out = Path::new(&out_dir).join("jswasm");
+    fs::create_dir_all(&dest_out).unwrap();
+    
     for entry in fs::read_dir(src_dir).unwrap() {
         let entry = entry.unwrap();
-        let src_path = entry.path();
-        let dest_path = dest_dir.join(entry.file_name());
-        fs::copy(src_path, dest_path).unwrap();
+        fs::copy(entry.path(), dest_out.join(entry.file_name())).unwrap();
     }
-
+    
+    // EXPORTA O CAMINHO!
+    println!("cargo:rustc-env=SQLITE_WASM_OUT_DIR={}", out_dir);
     println!("cargo:rerun-if-changed=jswasm/");
 }
