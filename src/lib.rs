@@ -105,29 +105,85 @@ pub fn w_msg(worker: Worker, msg_type: String, args: JsValue) -> js_sys::Promise
     })
 }
 
+// pub async fn init_db() -> Result<JsValue, JsValue> {
+//     // Se já tem DB_ID global, retorna (evita múltiplas aberturas)
+//     if let Some(id) = GLOBAL_DB_ID.lock().unwrap().clone() {
+//         return Ok(id);
+//     }
+//     
+//     let worker = get_worker();
+//
+//     // =========================
+//     // OPEN DATABASE
+//     // =========================
+//     let open_args = Object::new();
+//     Reflect::set(&open_args, &"filename".into(), &"users.sqlite3".into())?;
+//     Reflect::set(&open_args, &"vfs".into(), &"opfs".into())?;
+//
+//     let open_result =
+//         JsFuture::from(w_msg(worker.clone(), "open".to_string(), open_args.into())).await?;
+//
+//     // =========================
+//     // EXTRAI dbId (open.result?.dbId ?? open.dbId)
+//     // =========================
+//     let result_field = Reflect::get(&open_result, &"result".into()).ok();
+//
+//     let db_id = if let Some(result_obj) = result_field {
+//         let nested = Reflect::get(&result_obj, &"dbId".into()).ok();
+//         nested
+//             .unwrap_or_else(|| Reflect::get(&open_result, &"dbId".into()).unwrap_or(JsValue::NULL))
+//     } else {
+//         Reflect::get(&open_result, &"dbId".into()).unwrap_or(JsValue::NULL)
+//     };
+//
+//     // SALVA NO GLOBAL (não mais no thread_local)
+//     *GLOBAL_DB_ID.lock().unwrap() = Some(db_id.clone());
+//     web_sys::console::log_2(&"DB opened with dbId:".into(), &db_id);
+//
+//     // =========================
+//     // CREATE TABLE
+//     // =========================
+//     let exec_args = Object::new();
+//     Reflect::set(&exec_args, &"dbId".into(), &db_id)?;
+//     Reflect::set(
+//         &exec_args,
+//         &"sql".into(),
+//         &JsValue::from_str(
+//             r#"
+//             CREATE TABLE IF NOT EXISTS users (
+//                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+//                 name TEXT NOT NULL
+//             )
+//             "#,
+//         ),
+//     )?;
+//
+//     JsFuture::from(w_msg(worker, "exec".to_string(), exec_args.into())).await?;
+//     web_sys::console::log_1(&"Table 'users' ready".into());
+//
+//     Ok(JsValue::from(db_id))
+// }
+
+
+
+
 pub async fn init_db() -> Result<JsValue, JsValue> {
-    // Se já tem DB_ID global, retorna (evita múltiplas aberturas)
+    // SE JÁ TEM ID, RETORNA
     if let Some(id) = GLOBAL_DB_ID.lock().unwrap().clone() {
         return Ok(id);
     }
     
+    // TENTA ABRIR O BANCO (UMA ÚNICA VEZ)
     let worker = get_worker();
-
-    // =========================
-    // OPEN DATABASE
-    // =========================
+    
     let open_args = Object::new();
     Reflect::set(&open_args, &"filename".into(), &"users.sqlite3".into())?;
     Reflect::set(&open_args, &"vfs".into(), &"opfs".into())?;
-
-    let open_result =
-        JsFuture::from(w_msg(worker.clone(), "open".to_string(), open_args.into())).await?;
-
-    // =========================
-    // EXTRAI dbId (open.result?.dbId ?? open.dbId)
-    // =========================
+    
+    let open_result = JsFuture::from(w_msg(worker.clone(), "open".to_string(), open_args.into())).await?;
+    
     let result_field = Reflect::get(&open_result, &"result".into()).ok();
-
+    
     let db_id = if let Some(result_obj) = result_field {
         let nested = Reflect::get(&result_obj, &"dbId".into()).ok();
         nested
@@ -135,14 +191,12 @@ pub async fn init_db() -> Result<JsValue, JsValue> {
     } else {
         Reflect::get(&open_result, &"dbId".into()).unwrap_or(JsValue::NULL)
     };
-
-    // SALVA NO GLOBAL (não mais no thread_local)
+    
+    // SALVA NO GLOBAL
     *GLOBAL_DB_ID.lock().unwrap() = Some(db_id.clone());
     web_sys::console::log_2(&"DB opened with dbId:".into(), &db_id);
-
-    // =========================
-    // CREATE TABLE
-    // =========================
+    
+    // CRIA TABELA
     let exec_args = Object::new();
     Reflect::set(&exec_args, &"dbId".into(), &db_id)?;
     Reflect::set(
@@ -157,12 +211,17 @@ pub async fn init_db() -> Result<JsValue, JsValue> {
             "#,
         ),
     )?;
-
+    
     JsFuture::from(w_msg(worker, "exec".to_string(), exec_args.into())).await?;
     web_sys::console::log_1(&"Table 'users' ready".into());
-
+    
     Ok(JsValue::from(db_id))
 }
+
+
+
+
+
 
 // Função assíncrona de sleep no Rust/WASM
 pub async fn sleep(ms: i32) {
@@ -233,7 +292,7 @@ pub fn get_worker() -> Worker {
         if let Some(worker) = &*w.borrow() {
             worker.clone()
         } else {
-            let worker = Worker::new("/jswasm/sqlite3-worker1.js")
+            let worker = Worker::new("jswasm/sqlite3-worker1.js")
                 .expect("failed to create worker");
             
             *w.borrow_mut() = Some(worker.clone());
