@@ -1,5 +1,5 @@
 [package]
-name = "sqlite_wasm"
+name = "sqlite-wasm"
 description = "A simgle wasm to work with sqlite-wasm (official)"
 version = "0.1.0"
 edition = "2024"
