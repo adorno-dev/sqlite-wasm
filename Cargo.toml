@@ -42,10 +42,10 @@ features = [
     "Touch"
 ]
 
-# [profile.release]
-# opt-level = "z"   # Opcionais: "s" para size, "z" para agressivo
-# lto = true        # Ativar LTO (Link Time Optimization)
-# codegen-units = 1 # Reduzir o número de unidades de código
+[profile.release]
+opt-level = "z"   # Opcionais: "s" para size, "z" para agressivo
+lto = true        # Ativar LTO (Link Time Optimization)
+codegen-units = 1 # Reduzir o número de unidades de código
 # strip = true      # Remover dados de depuração
 
 # [package.metadata.wasm-pack]

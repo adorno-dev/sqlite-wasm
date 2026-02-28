@@ -312,6 +312,28 @@ pub fn get_worker() -> Worker {
     })
 }
 
+
+
+
+#[wasm_bindgen]
+pub async fn exec2(sql: String, bind: Array) -> Result<JsValue, JsValue> {
+    let (worker, db_id) = get_worker_and_db_id().await?;                                  
+        
+    let args = Object::new();
+    Reflect::set(&args, &"dbId".into(), &db_id)?;                                         
+    Reflect::set(&args, &"sql".into(), &sql.into())?;
+    Reflect::set(&args, &"bind".into(), &bind.into())?;
+    
+    Reflect::set(&args, &"rowMode".into(), &"object".into())?;
+    
+    let result_js = JsFuture::from(w_msg(worker, "exec".to_string(), args.into())).await?;
+    
+    Ok(result_js)
+}
+
+
+
+
 /// Executa comando sem retorno
 #[wasm_bindgen]
 pub async fn exec(sql: String, bind: Array) -> Result<(), JsValue> {
