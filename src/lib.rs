@@ -303,7 +303,7 @@ pub fn get_worker() -> Worker {
         if let Some(worker) = &*w.borrow() {
             worker.clone()
         } else {
-            let worker = Worker::new("jswasm/sqlite3-worker1.js")
+            let worker = Worker::new("jswasm/sqlite3-worker1.mjs")
                 .expect("failed to create worker");
             
             *w.borrow_mut() = Some(worker.clone());
