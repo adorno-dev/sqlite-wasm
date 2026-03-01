@@ -1,5 +1,9 @@
 # SQLite WASM with Rust
 
+[![crates.io](https://img.shields.io/crates/v/sqlite-wasm.svg)](https://crates.io/crates/sqlite-wasm)
+[![docs.rs](https://docs.rs/sqlite-wasm/badge.svg)](https://docs.rs/sqlite-wasm)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A high-performance SQLite wrapper for WebAssembly using Rust. This project provides a safe and efficient way to use SQLite in the browser with OPFS (Origin Private File System) support.
 
 ## ✨ Features
