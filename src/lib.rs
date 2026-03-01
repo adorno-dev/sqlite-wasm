@@ -48,7 +48,7 @@ fn get_worker() -> Result<&'static Worker, JsValue> {
     unsafe { Ok(WORKER.unwrap_unchecked()) }
 }
 
-pub fn w_msg(msg_type: String, args: JsValue) -> js_sys::Promise {
+fn w_msg(msg_type: String, args: JsValue) -> js_sys::Promise {
     future_to_promise(async move {
         let message_id = Uuid::new_v4().to_string();
         let (tx, rx) = oneshot::channel::<Result<JsValue, JsValue>>();
