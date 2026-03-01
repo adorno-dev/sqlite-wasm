@@ -1,4 +1,7 @@
 //src/lib.rs
+
+mod utils;
+
 use futures_channel::oneshot;
 use js_sys::{Array, Object, Reflect};
 use std::{
@@ -16,6 +19,8 @@ use wasm_bindgen::{
 };
 use wasm_bindgen_futures::{JsFuture, future_to_promise};
 use web_sys::{MessageEvent, Worker};
+
+use crate::utils::sleep;
 
 static DB_UID: Mutex<Option<JsValue>> = Mutex::new(None);
 static COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -130,6 +135,10 @@ fn w_msg(msg_type: String, args: JsValue) -> js_sys::Promise {
 #[allow(unused)]
 #[wasm_bindgen]
 pub async fn open() -> Result<(), JsValue> {
+
+    // Dá tempo pro worker carregar
+    sleep(100).await;
+
     // Se já tem uid, retorna
     if DB_UID.lock().unwrap().is_some() {
         return Ok(());
