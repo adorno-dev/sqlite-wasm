@@ -1,6 +1,6 @@
 //src/lib.rs
-
 mod utils;
+mod bindings;
 
 use futures_channel::oneshot;
 use js_sys::{Array, Object, Reflect};
@@ -27,6 +27,11 @@ static COUNTER: AtomicU32 = AtomicU32::new(0);
 static WORKER_INIT: Once = Once::new();
 static mut WORKER: Option<&'static Worker> = None;
 
+#[wasm_bindgen(start)]
+pub fn initialize_bindings() {
+    bindings::initialize_bindings();
+}
+
 // Função separada com #[wasm_bindgen] para inicialização
 #[wasm_bindgen]
 pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
@@ -38,6 +43,8 @@ pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
             WORKER = Some(leaked);
         }
     });
+
+    bindings::initialize_bindings();
 
     Ok(())
 }
