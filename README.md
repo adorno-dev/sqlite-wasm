@@ -162,6 +162,8 @@ app.use((req, res, next) => {
 4. Push to the branch (`git push origin feature/amazing`)
 5. Open a Pull Request
 
+**Made with ❤️ for the Rust + WASM community**
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -174,7 +176,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### 📧 Contact
 
-Project Link: [https://github.com/yourusername/sqlite-wasm](https://github.com/adorno-dev/sqlite-wasm)
+Project Link: [https://github.com/adorno-dev/sqlite-wasm](https://github.com/adorno-dev/sqlite-wasm)
 
 
 **Note**: This project requires COOP/COEP headers to be set on the server for OPFS support with SharedArrayBuffer.
