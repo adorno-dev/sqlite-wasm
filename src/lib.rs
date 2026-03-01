@@ -134,7 +134,7 @@ fn w_msg(msg_type: String, args: JsValue) -> js_sys::Promise {
 pub async fn open() -> Result<(), JsValue> {
 
     // Dá tempo pro worker carregar
-    sleep(70).await;
+    sleep(100).await;
 
     // Se já tem uid, retorna
     if DB_UID.lock().unwrap().is_some() {
