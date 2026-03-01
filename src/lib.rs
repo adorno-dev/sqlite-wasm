@@ -221,10 +221,8 @@ pub async fn close() -> Result<(), JsValue> {
 
 #[wasm_bindgen]
 pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
-    // ✅ VERIFICA SE O BANCO JÁ ESTÁ ABERTO
-    if DB_UID.lock().unwrap().is_none() {
-        return Err(JsValue::from_str("Database not opened. Call open() first."));
-    }
+
+    sleep(200).await;
     
     let id = COUNTER.fetch_add(1, Ordering::Relaxed);
     
@@ -246,11 +244,9 @@ pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
 
 #[wasm_bindgen]
 pub async fn query(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
-    // ✅ VERIFICA SE O BANCO JÁ ESTÁ ABERTO
-    if DB_UID.lock().unwrap().is_none() {
-        return Err(JsValue::from_str("Database not opened. Call open() first."));
-    }
-    
+
+    sleep(200).await;
+
     let id = COUNTER.fetch_add(1, Ordering::Relaxed);
     
     let args_obj = Object::new();
