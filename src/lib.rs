@@ -1,6 +1,5 @@
 //src/lib.rs
 mod utils;
-mod bindings;
 
 use futures_channel::oneshot;
 use js_sys::{Array, Object, Reflect};
@@ -27,11 +26,6 @@ static COUNTER: AtomicU32 = AtomicU32::new(0);
 static WORKER_INIT: Once = Once::new();
 static mut WORKER: Option<&'static Worker> = None;
 
-pub fn initialize_bindings() {
-    bindings::initialize_bindings();
-}
-
-// Função separada com #[wasm_bindgen] para inicialização
 #[wasm_bindgen]
 pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
     let worker = Worker::new(script_path)?;
@@ -42,8 +36,6 @@ pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
             WORKER = Some(leaked);
         }
     });
-
-    bindings::initialize_bindings();
 
     Ok(())
 }
@@ -138,12 +130,11 @@ fn w_msg(msg_type: String, args: JsValue) -> js_sys::Promise {
     })
 }
 
-#[allow(unused)]
 #[wasm_bindgen]
 pub async fn open() -> Result<(), JsValue> {
 
     // Dá tempo pro worker carregar
-    sleep(100).await;
+    sleep(70).await;
 
     // Se já tem uid, retorna
     if DB_UID.lock().unwrap().is_some() {
@@ -154,7 +145,7 @@ pub async fn open() -> Result<(), JsValue> {
     Reflect::set(&args, &"filename".into(), &"users.sqlite3".into())?;
     Reflect::set(&args, &"vfs".into(), &"opfs".into())?;
 
-    let worker = get_worker();
+    get_worker()?;
     let open_result = JsFuture::from(w_msg("open".to_string(), args.into())).await?;
     let result_field = Reflect::get(&open_result, &"result".into()).ok();
     let uid_value = if let Some(result_obj) = result_field {
@@ -170,10 +161,9 @@ pub async fn open() -> Result<(), JsValue> {
     Ok(())
 }
 
-#[allow(unused)]
 #[wasm_bindgen]
 pub async fn close() -> Result<(), JsValue> {
-    let worker = get_worker()?;
+    get_worker()?;
 
     let uid = DB_UID.lock().unwrap().take(); // Remove o uid
 
@@ -185,6 +175,7 @@ pub async fn close() -> Result<(), JsValue> {
 
     Ok(())
 }
+
 
 #[wasm_bindgen]
 pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
