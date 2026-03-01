@@ -27,7 +27,6 @@ static COUNTER: AtomicU32 = AtomicU32::new(0);
 static WORKER_INIT: Once = Once::new();
 static mut WORKER: Option<&'static Worker> = None;
 
-#[wasm_bindgen(start)]
 pub fn initialize_bindings() {
     bindings::initialize_bindings();
 }
