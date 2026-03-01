@@ -3,15 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <base data-trunk-public-url />  <!-- ESSENCIAL para Trunk -->
 </head>
-<body>
+<body bgcolor="#000000" fgcolor="#ffffff">
 
 <script type="module">
+    // Trunk vai resolver esse caminho automaticamente
     import init, * as wasm from "./pkg/sqlite_wasm.js";
+    
     window.wasm = wasm;
+    
+    // Inicialização
     await init();
-    await wasm.start_interval();
+    await wasm.initialize_worker("/sqlite-wasm/sqlite3-worker1.js");
+    
+    console.log("✅ WASM loaded!");
 </script>
+
+<!--
+await wasm.open();
+await wasm.query("SELECT * FROM users;", []);
+await wasm.close();
+-->
 
 </body>
 </html>

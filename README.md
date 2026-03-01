@@ -1,204 +1,175 @@
-# sqlite-wasm
+# SQLite WASM with Rust
 
-[![crates.io](https://img.shields.io/crates/v/sqlite-wasm.svg)](https://crates.io/crates/sqlite-wasm)
-[![docs.rs](https://docs.rs/sqlite-wasm/badge.svg)](https://docs.rs/sqlite-wasm)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+A high-performance SQLite wrapper for WebAssembly using Rust. This project provides a safe and efficient way to use SQLite in the browser with OPFS (Origin Private File System) support.
 
-**Wrapper Rust** para o [SQLite-WASM oficial](https://sqlite.org/wasm), permitindo uso idiomático em projetos Rust com acesso ao OPFS (Origin Private File System).
+## ✨ Features
 
-Este crate não reinventa a roda - ele empacota e expõe as funcionalidades do SQLite compilado para WASM de forma simples e ergonômica para Rust.
+- 🚀 **High Performance**: Written in Rust, compiled to WASM
+- 🔒 **OPFS Support**: Persistent storage using Origin Private File System
+- 🧵 **Web Worker**: Database operations run in a separate thread
+- 📦 **Auto-minification**: JS glue code automatically minified
+- 🔐 **COOP/COEP Headers**: Proper headers for SharedArrayBuffer support
+- 📊 **Compression**: Brotli/Gzip compression for WASM files
+- 🎯 **Type Safe**: Strongly typed Rust API
+- 🔄 **Async/Await**: Promise-based API for JavaScript
 
-## ✨ Características
+## 📋 Prerequisites
 
-- 🦀 **API Rust idiomática** - Use `async`/`await` naturalmente
-- 🗄️ **Core oficial** - Baseado no SQLite-WASM do [sqlite.org](https://sqlite.org/wasm)
-- 💾 **Persistência real** - OPFS (Origin Private File System) para dados persistentes
-- 🔄 **Wrapper leve** - Apenas o necessário para integrar Rust com o SQLite-WASM
-- 📦 **Auto-suficiente** - Inclui os arquivos oficiais do SQLite-WASM
+- Rust (stable) with wasm32-unknown-unknown target
+- Node.js (for development server)
+- wasm-pack
+- minix (for JS minification)
+- brotli & gzip (for WASM compression)
 
-## 📦 Instalação
-
-Adicione ao seu `Cargo.toml`:
-
-```toml
-[dependencies]
-sqlite-wasm = { git = "https://github.com/adorno-dev/sqlite-wasm.git", branch = "development" }
-```
-
-## 🚀 Uso Básico
-
-```rust
-use sqlite_wasm::{exec, query};
-use wasm_bindgen_futures::spawn_local;
-use js_sys::Array;
-
-async fn exemplo() -> Result<(), JsValue> {
-    // Criar tabela
-    exec(
-        "CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL
-        )".to_string(),
-        Array::new()
-    ).await?;
-
-    // Inserir dados
-    let bind = Array::new();
-    bind.push(&"João".into());
-    exec("INSERT INTO users (name) VALUES (?)".to_string(), bind).await?;
-
-    // Consultar
-    let result = query("SELECT * FROM users".to_string(), None).await?;
-    println!("Resultado: {:?}", result);
-    
-    Ok(())
-}
-```
-
-## 🔧 Arquivos Oficiais do SQLite
-
-Este crate inclui e gerencia os arquivos oficiais do SQLite-WASM:
-- `sqlite3.js` - Core do SQLite
-- `sqlite3-worker1.js` - Worker para operações assíncronas
-- `sqlite3-opfs-async-proxy.js` - Proxy para OPFS
-- `sqlite3.wasm` - Módulo WebAssembly
-
-### Copiando os arquivos para seu projeto
-
-Após compilar, copie os arquivos oficiais para sua pasta pública:
+## 🛠️ Installation
 
 ```bash
-cp -r $(find target -path "*/build/sqlite-wasm-*/out/jswasm" | head -1) ./public
+# Install Rust target
+rustup target add wasm32-unknown-unknown
+
+# Install wasm-pack
+cargo install wasm-pack
+
+# Install minix for JS minification
+cargo install minix
+
+# Install compression tools (Ubuntu/Debian)
+sudo apt install brotli gzip
+
+# Install compression tools (MacOS)
+brew install brotli
 ```
 
-### Headers HTTP obrigatórios
+## 🚀 Usage
 
-Seu servidor precisa enviar estes headers para o OPFS funcionar:
+### 1. Clone and build
 
+```bash
+git clone https://github.com/yourusername/sqlite-wasm
+cd sqlite-wasm
+chmod +x build.sh
+./build.sh
+```
+
+### 2. Start the server
+
+```bash
+NODE_ENV=production node webserver.js
+```
+
+### 3. Open in browser
+
+```
+http://localhost:8080
+```
+
+## 📁 Project Structure
+
+```
+.
+├── src/
+│   └── lib.rs           # Rust source code
+├── pkg/                  # Generated WASM package
+│   ├── sqlite_wasm.js    # Glue code (minified)
+│   ├── sqlite_wasm_bg.wasm
+│   └── sqlite-wasm/      # SQLite JS files
+├── sqlite-wasm/          # Original SQLite files
+├── index.html            # Test page
+├── webserver.js          # Express server
+├── build.sh              # Build script
+├── Cargo.toml            # Rust dependencies
+└── Trunk.toml            # Trunk configuration
+```
+
+## 📝 API Reference
+
+### Initialize Worker
 ```javascript
-// Exemplo com Express
+await wasm.initialize_worker("/sqlite-wasm/sqlite3-worker1.js");
+```
+
+### Open Database
+```javascript
+await wasm.open();
+```
+
+### Execute SQL (no return)
+```javascript
+await wasm.exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)", []);
+await wasm.exec("INSERT INTO users (name) VALUES (?)", ["Alice"]);
+```
+
+### Query SQL (with return)
+```javascript
+const users = await wasm.query("SELECT * FROM users", []);
+console.log(users);
+```
+
+### Close Database
+```javascript
+await wasm.close();
+```
+
+## 🏗️ Build Script Features
+
+The `build.sh` script automatically:
+
+1. Compiles Rust to WASM with `wasm-pack`
+2. Minifies the glue code (`sqlite_wasm.js`)
+3. Copies SQLite JS files to the package
+4. Compresses WASM files with Brotli and Gzip
+5. Shows final sizes of all generated files
+
+## ⚙️ Configuration Files
+
+### `Cargo.toml` (optimized for size)
+```toml
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+```
+
+### `webserver.js` (with compression)
+```javascript
+app.use(compression({ level: 9 }));
 app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
 ```
 
-## 📖 API
+## 📊 Performance
 
-### `async fn exec(sql: String, bind: Array) -> Result<(), JsValue>`
-Executa comandos SQL sem retorno (INSERT, UPDATE, DELETE, CREATE).  
-- `sql`: Comando SQL
-- `bind`: Parâmetros para placeholders `?`
+| File | Original | Compressed | Reduction |
+|------|----------|------------|-----------|
+| sqlite_wasm.js | 16KB | 12KB | 25% |
+| sqlite_wasm_bg.wasm | 47KB | 17KB (Brotli) | 64% |
+| sqlite3.wasm | 835KB | 336KB (Brotli) | 60% |
 
-### `async fn query(sql: String, bind: Option<Array>) -> Result<JsValue, JsValue>`
-Executa uma consulta SQL e retorna as linhas como array de objetos.  
-- `sql`: Consulta SQL
-- `bind`: Parâmetros opcionais
+## 🤝 Contributing
 
-### `async fn init_db() -> Result<JsValue, JsValue>`
-Inicializa o banco de dados e cria a tabela padrão `users`. Retorna o `dbId`.
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/amazing`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing`)
+5. Open a Pull Request
 
-### `fn get_worker() -> Worker`
-Retorna o worker do SQLite (para uso avançado).
+## 📄 License
 
-## 🏗️ Exemplo Completo com Leptos
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-```rust
-use leptos::*;
-use sqlite_wasm::{exec, query};
-use wasm_bindgen_futures::spawn_local;
-use js_sys::Array;
+## 🙏 Acknowledgments
 
-#[component]
-fn App() -> impl IntoView {
-    let (users, set_users) = create_signal(Vec::new());
-    let (status, set_status) = create_signal("Carregando...".to_string());
+- [SQLite](https://sqlite.org) for the amazing database
+- [Rust](https://rust-lang.org) for the performance
+- [wasm-pack](https://github.com/rustwasm/wasm-pack) for the tooling
 
-    create_effect(move |_| {
-        spawn_local(async move {
-            // Inicializa banco
-            match sqlite_wasm::init_db().await {
-                Ok(_) => {
-                    set_status.set("Banco pronto!".to_string());
-                    
-                    // Carrega usuários
-                    let result = query("SELECT * FROM users".to_string(), None).await.unwrap();
-                    // Processa resultado...
-                }
-                Err(e) => set_status.set(format!("Erro: {:?}", e))
-            }
-        });
-    });
+## 📧 Contact
 
-    view! {
-        <div>
-            <h1>SQLite + Leptos</h1>
-            <p>{status}</p>
-        </div>
-    }
-}
-```
-
-## 🧪 Testando Localmente
-
-1. Clone o repositório:
-```bash
-git clone https://github.com/adorno-dev/sqlite-wasm.git
-cd sqlite-wasm
-```
-
-2. Compile para WASM:
-```bash
-wasm-pack build --target web
-```
-
-3. Use o servidor de teste incluso:
-```bash
-npm install express
-node server.js
-```
-
-## 🏗️ Arquitetura
-
-```
-Seu Código Rust → sqlite-wasm (wrapper) → SQLite-WASM Oficial → OPFS (navegador)
-```
-
-## 🙏 Créditos
-
-- [SQLite](https://sqlite.org) - Banco de dados incrível
-- [SQLite-WASM](https://sqlite.org/wasm) - Versão oficial para WebAssembly
-- [Rust](https://rust-lang.org) - Linguagem maravilhosa
-- [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) - Integração Rust-WASM
-
-## 📄 Licença
-
-MIT - assim como o SQLite é domínio público, este wrapper é livre.
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add AmazingFeature'`)
-4. Push (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## ⚠️ Limitações Conhecidas
-
-- Requer navegadores modernos com suporte a WASM e OPFS
-- Headers COOP/COEP obrigatórios no servidor
-- Funciona apenas em contexto seguro (localhost ou HTTPS)
-- Dados ficam restritos à origem (site) do navegador
-
-## 📞 Suporte
-
-- Issues: [GitHub Issues](https://github.com/adorno-dev/sqlite-wasm/issues)
-- Discussões: [GitHub Discussions](https://github.com/adorno-dev/sqlite-wasm/discussions)
+Project Link: [https://github.com/yourusername/sqlite-wasm](https://github.com/adorno-dev/sqlite-wasm)
 
 ---
 
-**Feito com ❤️ para a comunidade Rust + WASM**
-
+**Note**: This project requires COOP/COEP headers to be set on the server for OPFS support with SharedArrayBuffer.

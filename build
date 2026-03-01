@@ -1,0 +1,53 @@
+#//build.sh
+#!/bin/bash
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo -e "${BLUE}🚀 Building...${NC}"
+
+# 1. Generate package
+echo -e "${GREEN}📦 Generating package...${NC}"
+wasm-pack build --target web --release
+
+# 2. Minify ONLY glue code
+echo -e "${GREEN}🔧 Minifying glue code...${NC}"
+minix -i pkg/sqlite_wasm.js -o pkg/sqlite_wasm.js > /dev/null 2>&1
+echo "  ✅ sqlite_wasm.js minified"
+
+# 3. Copy SQLite files
+echo -e "${GREEN}📋 Copying SQLite files...${NC}"
+mkdir -p pkg/sqlite-wasm
+cp sqlite-wasm/*.js pkg/sqlite-wasm/ 2>/dev/null || true
+cp sqlite-wasm/*.wasm pkg/sqlite-wasm/ 2>/dev/null || true
+echo "  ✅ SQLite files copied"
+
+# 4. Compress WASM files for production
+echo -e "${GREEN}🔒 Compressing WASM files...${NC}"
+if command -v brotli &> /dev/null; then
+  find pkg -name "*.wasm" -exec brotli -q 11 -f -k {} \;
+  echo "  ✅ Brotli compression complete"
+else
+  echo -e "${YELLOW}  ⚠️  brotli not installed (optional)${NC}"
+fi
+
+if command -v gzip &> /dev/null; then
+  find pkg -name "*.wasm" -exec gzip -9 -f -k {} \;
+  echo "  ✅ Gzip compression complete"
+else
+  echo -e "${YELLOW}  ⚠️  gzip not installed (should be available)${NC}"
+fi
+
+# 5. Show final sizes
+echo -e "${BLUE}📊 Final sizes:${NC}"
+echo "  JS files:"
+find pkg -name "*.js" -exec ls -lh {} \; | awk '{printf "    %s %s\n", $5, $9}'
+echo "  WASM files:"
+find pkg -name "*.wasm" -exec ls -lh {} \; | awk '{printf "    %s %s\n", $5, $9}'
+echo "  Compressed:"
+find pkg -name "*.wasm.gz" -o -name "*.wasm.br" -exec ls -lh {} \; 2>/dev/null | awk '{printf "    %s %s\n", $5, $9}'
+
+echo -e "${GREEN}🌐 Server: NODE_ENV=production node webserver.js${NC}"
