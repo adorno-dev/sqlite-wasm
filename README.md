@@ -170,10 +170,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Rust](https://rust-lang.org) for the performance
 - [wasm-pack](https://github.com/rustwasm/wasm-pack) for the tooling
 
-## 📧 Contact
+### 📧 Contact
 
 Project Link: [https://github.com/yourusername/sqlite-wasm](https://github.com/adorno-dev/sqlite-wasm)
 
----
 
 **Note**: This project requires COOP/COEP headers to be set on the server for OPFS support with SharedArrayBuffer.
