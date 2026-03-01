@@ -177,8 +177,55 @@ pub async fn close() -> Result<(), JsValue> {
 }
 
 
+// #[wasm_bindgen]
+// pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
+//     let id = COUNTER.fetch_add(1, Ordering::Relaxed);
+//     
+//     let args_obj = Object::new();
+//     Reflect::set(&args_obj, &"id".into(), &JsValue::from(id)).ok();
+//     Reflect::set(&args_obj, &"type".into(), &"exec".into()).ok();
+//     Reflect::set(&args_obj, &"sql".into(), &JsValue::from_str(sql)).ok();
+//     
+//     if !args.is_empty() {
+//         let args_array = Array::new();
+//         for arg in args {
+//             args_array.push(&arg);
+//         }
+//         Reflect::set(&args_obj, &"bind".into(), &args_array).ok();
+//     }
+//     
+//     JsFuture::from(w_msg("exec".to_string(), args_obj.into())).await
+// }
+//
+// #[wasm_bindgen]
+// pub async fn query(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
+//     let id = COUNTER.fetch_add(1, Ordering::Relaxed);
+//     
+//     let args_obj = Object::new();
+//     Reflect::set(&args_obj, &"id".into(), &JsValue::from(id)).ok();
+//     Reflect::set(&args_obj, &"type".into(), &"exec".into()).ok();
+//     Reflect::set(&args_obj, &"sql".into(), &JsValue::from_str(sql)).ok();
+//     Reflect::set(&args_obj, &"rowMode".into(), &"object".into()).ok();
+//     
+//     if !args.is_empty() {
+//         let args_array = Array::new();
+//         for arg in args {
+//             args_array.push(&arg);
+//         }
+//         Reflect::set(&args_obj, &"bind".into(), &args_array).ok();
+//     }
+//     
+//     JsFuture::from(w_msg("exec".to_string(), args_obj.into())).await
+// }
+
+
 #[wasm_bindgen]
 pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
+    // ✅ VERIFICA SE O BANCO JÁ ESTÁ ABERTO
+    if DB_UID.lock().unwrap().is_none() {
+        return Err(JsValue::from_str("Database not opened. Call open() first."));
+    }
+    
     let id = COUNTER.fetch_add(1, Ordering::Relaxed);
     
     let args_obj = Object::new();
@@ -199,6 +246,11 @@ pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
 
 #[wasm_bindgen]
 pub async fn query(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
+    // ✅ VERIFICA SE O BANCO JÁ ESTÁ ABERTO
+    if DB_UID.lock().unwrap().is_none() {
+        return Err(JsValue::from_str("Database not opened. Call open() first."));
+    }
+    
     let id = COUNTER.fetch_add(1, Ordering::Relaxed);
     
     let args_obj = Object::new();
@@ -217,3 +269,4 @@ pub async fn query(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
     
     JsFuture::from(w_msg("exec".to_string(), args_obj.into())).await
 }
+
