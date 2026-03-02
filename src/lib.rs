@@ -2,13 +2,11 @@ mod bindings;
 mod database;
 mod worker;
 
-pub use bindings::initialize_bindings;
+pub use bindings::{initialize_bindings, WasmApi};
 pub use database::{close, db_id, exec, is_open, open, query};
 pub use worker::{initialize_worker, wait_for_worker};
 
 use wasm_bindgen::{JsValue, prelude::wasm_bindgen};
-
-use crate::bindings::WasmApi;
 
 /// One-stop initialization: creates worker, waits for ready, opens database, exposes bindings
 #[wasm_bindgen(js_name = "autostart")]
