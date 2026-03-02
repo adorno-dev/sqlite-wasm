@@ -51,3 +51,4 @@ echo "  Compressed:"
 find pkg -name "*.wasm.gz" -o -name "*.wasm.br" -exec ls -lh {} \; 2>/dev/null | awk '{printf "    %s %s\n", $5, $9}'
 
 echo -e "${GREEN}🌐 Server: NODE_ENV=production node webserver.js${NC}"
+lsof -ti:8080 | xargs kill -9 2>/dev/null || true

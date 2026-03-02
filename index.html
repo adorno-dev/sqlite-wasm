@@ -1,30 +1,375 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-  <base data-trunk-public-url />  <!-- ESSENCIAL para Trunk -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <title>🔥 SQLite WASM Test</title>
+    <base data-trunk-public-url />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 3px solid #764ba2;
+            padding-bottom: 15px;
+        }
+
+        h1::before {
+            content: "🔥";
+            font-size: 1.2em;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #764ba2;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            border: 1px solid #e1e4e8;
+        }
+
+        .status.loading {
+            border-left-color: #ffc107;
+            background: #fff9e6;
+        }
+
+        .status.success {
+            border-left-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .status.error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: white;
+            border: 2px solid #764ba2;
+            color: #764ba2;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        button:hover {
+            background: #764ba2;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        button.secondary:hover {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        th {
+            background: #764ba2;
+            color: white;
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e1e4e8;
+            color: #333;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: #f8f9fa;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e1e4e8;
+            border-radius: 50px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+        }
+
+        .badge {
+            background: #764ba2;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #764ba2;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
-<body bgcolor="#000000" fgcolor="#ffffff">
 
-<script type="module">
-    // Trunk vai resolver esse caminho automaticamente
-    import init, * as wasm from "./pkg/sqlite_wasm.js";
-    
-    window.wasm = wasm;
-    
-    // Inicialização
-    await init();
-    await wasm.initialize_worker("/sqlite-wasm/sqlite3-worker1.js");
-    
-    console.log("✅ WASM loaded!");
-</script>
+<body>
+    <div class="container">
+        <h1>SQLite WASM Test</h1>
 
-<!--
-await wasm.open();
-await wasm.query("SELECT * FROM users;", []);
-await wasm.close();
--->
+        <div id="status" class="status loading">
+            ⏳ Initializing SQLite...
+        </div>
 
+        <div style="display: none;" id="app">
+            <div class="button-group">
+                <button id="btnCreate" class="secondary">📋 Create Table</button>
+                <button id="btnInsert">➕ Insert User</button>
+                <button id="btnList">👥 List Users</button>
+                <button id="btnDrop">🗑️ Drop Table</button>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="userName" placeholder="Enter user name..." autocomplete="off" />
+                <button id="btnAddUser" class="secondary">Add</button>
+            </div>
+
+            <div id="tableContainer"></div>
+        </div>
+
+        <div class="footer">
+            ⚡ Powered by <strong>sqlite-wasm</strong> + Rust 🦀
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { autostart } from "./pkg/sqlite_wasm.js";
+
+        const statusEl = document.getElementById('status');
+        const appEl = document.getElementById('app');
+        const tableContainer = document.getElementById('tableContainer');
+        const userNameInput = document.getElementById('userName');
+
+        let db = null;
+
+        function updateStatus(text, type = 'loading') {
+            statusEl.textContent = text;
+            statusEl.className = `status ${type}`;
+        }
+
+        function showApp() {
+            appEl.style.display = 'block';
+        }
+
+        async function renderUsers() {
+            if (!db) return;
+
+            try {
+                const result = await db.query('SELECT * FROM users ORDER BY id', []);
+                const rows = result.result?.resultRows || [];
+
+                if (rows.length === 0) {
+                    tableContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">📭 No users found</p>';
+                    return;
+                }
+
+                let html = '<table><tr><th>ID</th><th>Name</th></tr>';
+                rows.forEach(row => {
+                    html += `<tr><td>${row.id}</td><td>${row.name}</td></tr>`;
+                });
+                html += '</table>';
+
+                tableContainer.innerHTML = html;
+            } catch (e) {
+                console.error(e);
+                tableContainer.innerHTML = `<p style="color: #dc3545;">❌ Error loading users: ${e}</p>`;
+            }
+        }
+
+        async function initialize() {
+            try {
+                updateStatus('📦 Loading WASM module...');
+                await init();
+
+                updateStatus('🚀 Auto-starting SQLite...');
+                db = await autostart("/sqlite-wasm/sqlite3-worker1.js", "leptos.db");
+
+                updateStatus('✅ SQLite ready!', 'success');
+                showApp();
+
+                // Check if table exists
+                try {
+                    await db.query('SELECT * FROM users LIMIT 1', []);
+                } catch {
+                    // Table doesn't exist, create it
+                    await db.exec(
+                        'CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)',
+                        []
+                    );
+                }
+
+                await renderUsers();
+
+            } catch (e) {
+                updateStatus(`❌ Error: ${e.message || e}`, 'error');
+                console.error(e);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('btnCreate').addEventListener('click', async () => {
+            try {
+                await db.exec(
+                    'CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)',
+                    []
+                );
+                updateStatus('✅ Table created!', 'success');
+                await renderUsers();
+            } catch (e) {
+                alert(`Error: ${e}`);
+            }
+        });
+
+        document.getElementById('btnInsert').addEventListener('click', async () => {
+            const name = userNameInput.value.trim();
+            if (!name) {
+                alert('Please enter a name');
+                return;
+            }
+
+            try {
+                await db.exec('INSERT INTO users (name) VALUES (?)', [name]);
+                userNameInput.value = '';
+                await renderUsers();
+                updateStatus('✅ User added!', 'success');
+            } catch (e) {
+                alert(`Error: ${e}`);
+            }
+        });
+
+        document.getElementById('btnAddUser').addEventListener('click', () => {
+            document.getElementById('btnInsert').click();
+        });
+
+        userNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('btnInsert').click();
+            }
+        });
+
+        document.getElementById('btnList').addEventListener('click', async () => {
+            await renderUsers();
+        });
+
+        document.getElementById('btnDrop').addEventListener('click', async () => {
+            if (confirm('Are you sure you want to drop the users table?')) {
+                try {
+                    await db.exec('DROP TABLE IF EXISTS users', []);
+                    await renderUsers();
+                    updateStatus('✅ Table dropped!', 'success');
+                } catch (e) {
+                    alert(`Error: ${e}`);
+                }
+            }
+        });
+
+        // Start the app
+        init();
+        initialize();
+    </script>
 </body>
+
 </html>
