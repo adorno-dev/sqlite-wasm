@@ -285,7 +285,7 @@
                 await init();
 
                 updateStatus('🚀 Auto-starting SQLite...');
-                db = await autostart("/sqlite-wasm/sqlite3-worker1.js", "leptos.db");
+                db = await autostart("/sqlite.org/sqlite3-worker1.js", "leptos.db");
 
                 updateStatus('✅ SQLite ready!', 'success');
                 showApp();

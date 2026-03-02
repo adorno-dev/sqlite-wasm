@@ -1,13 +1,15 @@
 [package]
 name = "sqlite-wasm"
-description = "A simgle wasm to work with sqlite-wasm (official)"
+description = "A high-performance SQLite wrapper for WebAssembly with OPFS support"
 version = "0.1.0"
 edition = "2024"
 authors = ["adorno-dev <adorno.dev@gmail.com>"]
 repository = "https://github.com/adorno-dev/sqlite-wasm"
 license = "MIT"
 readme = "README.md"
-categories = ["wasm"]
+keywords = ["sqlite-wasm", "wasm", "sqlite", "opfs", "database", "webassembly", "worker"]
+categories = ["wasm", "database"]
+exclude = ["/pkg", "/target"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -25,8 +27,21 @@ web-sys = { version = "0.3", features = [
     "console"
 ]}
 
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [profile.release]
-opt-level = "z"           # Otimizar tamanho
-lto = true                # Link time optimization
-codegen-units = 1         # Máxima otimização
-panic = "abort"           # Remove unwinding
+opt-level = "z"           # Optimize for size
+lto = true                # Link time optimization for better performance
+codegen-units = 1         # Compile everything together for maximum optimization
+panic = "abort"           # Remove unwinding for smaller binary
+strip = "debuginfo"       # Remove debug symbols (keeps necessary symbols for wasm-bindgen)
+
+[profile.dev]
+opt-level = 0              # Fast compilation for development
+lto = false                # Disable LTO for faster builds
+codegen-units = 16         # Parallel compilation for speed
+
+[package.metadata.docs.rs]
+all-features = true        # Document all features
+rustdoc-args = ["--cfg", "docsrs"]  # Mark as docs.rs documentation
