@@ -4,7 +4,7 @@ import { autostart } from '../../pkg/sqlite_wasm.js';
 import { 
     db, setDb, currentDatabase, setCurrentDatabase, 
     availableDatabases, setAvailableDatabases,
-    setCurrentTable, elements, pageSize,  // ← ADICIONA pageSize AQUI!
+    setCurrentTable, elements, pageSize,
     setCurrentPage, setTotalRows, setLastResults, setLastQuery
 } from './state.js';
 import { 
@@ -25,92 +25,49 @@ async function ensureWorker() {
     }
 }
 
-export async function refreshDatabases() {
-    try {
-        // 🔥 ESCANEIA O OPFS
-        const databases = await scanOPFSDatabases();
-        setAvailableDatabases(databases);
-        
-        updateDatabaseSelector();
-        await populateDatabaseDropdown();
-        
-        // ✅ NÃO SELECIONA MAIS AUTOMATICAMENTE
-        setCurrentDatabase(null);
-        setDb(null);
-        showNoDatabases();
-        
-        updateRunButtonState();
-        
-    } catch (error) {
-        console.error('Failed to refresh databases:', error);
-        showNoDatabases();
-    }
-}
-
 export async function createNewDatabase(dbName) {
     console.log('📦 Creating new database:', dbName);
     
     try {
-        const { autostart } = await import('../../pkg/sqlite_wasm.js');
-        const { setDb, setCurrentDatabase, availableDatabases, setAvailableDatabases } = await import('./state.js');
+        const { open } = await import('../../pkg/sqlite_wasm.js');
+        const { setCurrentDatabase, availableDatabases, setAvailableDatabases } = await import('./state.js');
         
-        console.log('1️⃣ Calling autostart...');
-        const newDb = await autostart('/sqlite.org/sqlite3-worker1.js', dbName);
-        console.log('2️⃣ Autostart returned:', newDb ? 'OK' : 'null');
+        console.log('1️⃣ Opening database...');
+        await open(dbName);
         
-        if (!newDb) {
-            console.error('❌ autostart returned null');
-            return null;
-        }
+        console.log('2️⃣ Database opened/created');
         
-        console.log('3️⃣ Setting db...');
-        setDb(newDb);
-        
-        console.log('4️⃣ Setting current database...');
+        console.log('3️⃣ Setting current database...');
         setCurrentDatabase(dbName);
         
-        console.log('5️⃣ Updating available databases...');
+        console.log('4️⃣ Updating available databases...');
         if (!availableDatabases.includes(dbName)) {
             setAvailableDatabases([...availableDatabases, dbName]);
         }
         
-        console.log('6️⃣ Updating UI...');
+        console.log('5️⃣ Updating UI...');
         updateDatabaseSelector();
         await populateDatabaseDropdown();
         
-        console.log('7️⃣ Creating sample table...');
-        await newDb.query(
-            "CREATE TABLE IF NOT EXISTS sample (id INTEGER PRIMARY KEY, name TEXT)",
-            []
-        );
-        
-        console.log('8️⃣ Loading schema...');
+        console.log('6️⃣ Loading schema...');
         await loadDatabaseSchema();
         
-        console.log('9️⃣ Updating run button...');
+        console.log('7️⃣ Updating run button...');
         updateRunButtonState();
         
         console.log('✅ Database created successfully:', dbName);
-        return newDb;
         
     } catch (error) {
         console.error('❌ Failed to create database:', error);
-        console.error('Error details:', {
-            message: error.message,
-            stack: error.stack,
-            error: error
-        });
         alert(`Error creating database: ${error.message || error}`);
-        return null;
     }
 }
 
-async function scanOPFSDatabases() {
+export async function scanOPFSDatabases() {
     try {
         const databases = [];
         
         const root = await navigator.storage.getDirectory();
-        
         const entries = [];
         for await (const entry of root.values()) {
             entries.push(entry);
@@ -119,10 +76,7 @@ async function scanOPFSDatabases() {
         for (const entry of entries) {
             if (entry.kind === 'file') {
                 const fileName = entry.name;
-                // 🔥 IGNORA OS BANCOS TEMPORÁRIOS
-                if (fileName !== '_temp_.db' && 
-                    fileName !== '___worker_.db' && 
-                    (fileName.endsWith('.sqlite3') || fileName.endsWith('.db'))) {
+                if (fileName.endsWith('.sqlite3') || fileName.endsWith('.db')) {
                     databases.push(fileName);
                 }
             }
@@ -136,13 +90,12 @@ async function scanOPFSDatabases() {
     }
 }
 
-
 export async function loadDatabaseSchema() {
     const currentDb = db;
     if (!currentDb) return;
     
     try {
-        // Tenta carregar as tabelas
+        // Carrega tabelas
         let tables = [];
         try {
             const tablesResult = await currentDb.query(
@@ -151,13 +104,38 @@ export async function loadDatabaseSchema() {
             );
             tables = tablesResult.result?.resultRows || [];
         } catch (e) {
-            console.log('No tables found or error:', e);
+            console.log('Error loading tables:', e);
             tables = [];
         }
-        
         updateTreeTables(tables);
-        updateTreeViews([]); // Simplificado
-        updateTreeTriggers([]); // Simplificado
+        
+        // Carrega views
+        let views = [];
+        try {
+            const viewsResult = await currentDb.query(
+                "SELECT name FROM sqlite_master WHERE type='view' ORDER BY name",
+                []
+            );
+            views = viewsResult.result?.resultRows || [];
+        } catch (e) {
+            console.log('Error loading views:', e);
+            views = [];
+        }
+        updateTreeViews(views);
+        
+        // Carrega triggers
+        let triggers = [];
+        try {
+            const triggersResult = await currentDb.query(
+                "SELECT name FROM sqlite_master WHERE type='trigger' ORDER BY name",
+                []
+            );
+            triggers = triggersResult.result?.resultRows || [];
+        } catch (e) {
+            console.log('Error loading triggers:', e);
+            triggers = [];
+        }
+        updateTreeTriggers(triggers);
         
         if (tables.length > 0) {
             const firstTable = tables[0].name || tables[0];
@@ -183,12 +161,12 @@ export async function loadTableData(tableName, page = 1) {
     
     try {
         setCurrentPage(page);                                                                                 
-        const offset = (page - 1) * pageSize;  // ← pageSize AGORA É NÚMERO!
+        const offset = (page - 1) * pageSize;
         
         console.log('📊 Loading table:', {
             tableName,
             page,
-            pageSize,  // ← Agora é número
+            pageSize,
             offset
         });
         
@@ -256,20 +234,58 @@ export async function runQuery() {
         }
         
         const upperSql = sql.toUpperCase();
+        
+        // ATUALIZA SCHEMA PARA COMANDOS DDL
         if (upperSql.includes('CREATE TABLE') || 
             upperSql.includes('DROP TABLE') ||
-            upperSql.includes('ALTER TABLE')) {
+            upperSql.includes('ALTER TABLE') ||
+            upperSql.includes('CREATE VIEW') ||
+            upperSql.includes('DROP VIEW') ||
+            upperSql.includes('CREATE TRIGGER') ||
+            upperSql.includes('DROP TRIGGER')) {
             await loadDatabaseSchema();
+        }
+        
+        // RECARREGA TABELA SELECIONADA PARA COMANDOS DML
+        if (upperSql.includes('INSERT') || 
+            upperSql.includes('UPDATE') || 
+            upperSql.includes('DELETE')) {
+            
+            const { currentTable } = await import('./state.js');
+            
+            if (currentTable) {
+                console.log('🔄 Reloading table after DML operation:', currentTable);
+                await loadTableData(currentTable, 1);
+            }
         }
         
     } catch (error) {
         console.error('Query failed:', error);
+        
+        let errorMessage = 'Unknown error';
+        
+        if (error && typeof error === 'object') {
+            if (error.result && error.result.message) {
+                errorMessage = error.result.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            } else {
+                try {
+                    errorMessage = JSON.stringify(error, null, 2);
+                } catch (e) {
+                    errorMessage = String(error);
+                }
+            }
+        }
+        
         if (elements.tableWrapper) {
             elements.tableWrapper.innerHTML = `
                 <div class="error-state">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: var(--error); margin-bottom: 1rem;"></i>
-                    <h3>Query Error</h3>
-                    <p>${error.message || error}</p>
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--error); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--error); margin-bottom: 1rem;">Query Error</h3>
+                    <p style="color: var(--text-primary); background: var(--bg-tertiary); padding: 1rem; border-radius: 4px; font-family: monospace; text-align: left; max-width: 800px; margin: 0 auto; white-space: pre-wrap; word-break: break-word;">${errorMessage}</p>
                 </div>
             `;
         }

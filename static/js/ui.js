@@ -5,7 +5,7 @@ import {
     currentTable, currentPage, pageSize, totalRows, lastResults,
     setCurrentTable, setCurrentPage
 } from './state.js';
-import { loadTableData, refreshDatabases, createNewDatabase } from './database.js';
+import { loadTableData, createNewDatabase } from './database.js';
 
 // ===== DROPDOWN FUNCTIONS =====
 export function toggleDropdown(e) {
@@ -33,7 +33,6 @@ export async function populateDatabaseDropdown() {
     const dropdown = elements.dbDropdown;
     if (!dropdown) return;
     
-    // Flag estática para controlar se o listener já foi adicionado
     if (!dropdown._listenerAdded) {
         dropdown.addEventListener('click', async function handler(e) {
             const option = e.target.closest('.db-option');
@@ -47,10 +46,8 @@ export async function populateDatabaseDropdown() {
             
             console.log('👆 Clicked option with dbName:', dbName, 'currentDatabase:', currentDatabase);
             
-            // Fecha o dropdown imediatamente
             dropdown.classList.remove('show');
             
-            // Executa a ação
             if (dbName === 'null') {
                 if (currentDatabase !== null) {
                     await switchDatabase(null);
@@ -68,7 +65,6 @@ export async function populateDatabaseDropdown() {
     console.log('📋 Populating dropdown. Current DB:', currentDatabase);
     console.log('📋 Available DBs:', availableDatabases);
     
-    // Opção "Choose a database" (só se tiver banco selecionado)
     if (currentDatabase) {
         const chooseOption = document.createElement('div');
         chooseOption.className = 'db-option choose-db';
@@ -82,7 +78,6 @@ export async function populateDatabaseDropdown() {
         dropdown.appendChild(separator);
     }
     
-    // Lista de bancos
     if (availableDatabases.length > 0) {
         [...new Set(availableDatabases)].forEach(dbName => {
             const option = document.createElement('div');
@@ -112,42 +107,30 @@ async function switchDatabase(dbName) {
     console.log('🔄 Switching database to:', dbName);
     
     const { setCurrentDatabase } = await import('./state.js');
+    const { open } = await import('../../pkg/sqlite_wasm.js');
     
-    const dropdown = elements.dbDropdown;
-    if (dropdown) {
-        dropdown.style.pointerEvents = 'none';
-        dropdown.classList.remove('show');
-    }
-    
-    try {
-        if (dbName === null) {
-            console.log('👉 Choosing no database');
-            setCurrentDatabase(null);
-            updateDatabaseSelector();
-            showNoDatabases();
-            updateTreeTables([]);
-            updateTreeViews([]);
-            updateTreeTriggers([]);
-            
-        } else {
-            console.log('👉 Opening database:', dbName);
-            
-            setCurrentDatabase(dbName);
-            updateDatabaseSelector();
-            
-            console.log('📚 Loading schema...');
-            const { loadDatabaseSchema } = await import('./database.js');
-            await loadDatabaseSchema();
-            console.log('✅ Schema loaded');
-        }
+    if (dbName === null) {
+        setCurrentDatabase(null);
+        localStorage.removeItem('sqlite-studio-last-db');
+        localStorage.removeItem('sqlite-studio-last-item');
+        updateDatabaseSelector();
+        showNoDatabases();
+        updateTreeTables([]);
+        updateTreeViews([]);
+        updateTreeTriggers([]);
+    } else {
+        await open(dbName);
+        setCurrentDatabase(dbName);
+        localStorage.setItem('sqlite-studio-last-db', dbName);
+        updateDatabaseSelector();
         
-    } finally {
-        if (dropdown) dropdown.style.pointerEvents = '';
-        await populateDatabaseDropdown();
-        updateRunButtonState();
+        const { loadDatabaseSchema } = await import('./database.js');
+        await loadDatabaseSchema();
     }
+    
+    await populateDatabaseDropdown();
+    updateRunButtonState();
 }
-
 
 // ===== TREE UPDATES =====
 export function updateTreeTables(tables) {
@@ -175,16 +158,30 @@ export function updateTreeTables(tables) {
     });
     
     elements.treeTables.innerHTML = html;
+
+    if (currentTable) {
+        const activeItem = document.querySelector(`.tree-item[data-table="${currentTable}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
+    }
     
     document.querySelectorAll('.tree-item[data-table]').forEach(item => {
         item.addEventListener('click', () => {
-            const table = item.dataset.table;
-            setCurrentTable(table);
-            loadTableData(table);
-            
-            document.querySelectorAll('.tree-item[data-table]').forEach(el => {
+            document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
                 el.classList.remove('active');
             });
+            
+            const table = item.dataset.table;
+            setCurrentTable(table);
+            
+            // 🔥 SALVA O ITEM SELECIONADO
+            localStorage.setItem('sqlite-studio-last-item', JSON.stringify({
+                type: 'table',
+                name: table
+            }));
+            
+            loadTableData(table);
             item.classList.add('active');
         });
     });
@@ -200,6 +197,63 @@ export function updateTreeViews(views) {
                 <span class="empty-text">[no views]</span>
             </div>
         `;
+        return;
+    }
+    
+    let html = '';
+    views.forEach(view => {
+        const viewName = view.name || view;
+        html += `
+            <div class="tree-item" data-view="${viewName}">
+                <i class="fas fa-eye"></i>
+                ${viewName}
+            </div>
+        `;
+    });
+    
+    elements.treeViews.innerHTML = html;
+    
+    document.querySelectorAll('.tree-item[data-view]').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            const viewName = item.dataset.view;
+            console.log('👁️ Loading view:', viewName);
+            
+            // 🔥 SALVA O ITEM SELECIONADO
+            localStorage.setItem('sqlite-studio-last-item', JSON.stringify({
+                type: 'view',
+                name: viewName
+            }));
+            
+            item.classList.add('active');
+            loadViewData(viewName);
+        });
+    });
+}
+
+async function loadViewData(viewName) {
+    const { db } = await import('./state.js');
+    if (!db) return;
+    
+    try {
+        elements.resultsHeader.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading view...`;
+        
+        const result = await db.query(`SELECT * FROM ${viewName} LIMIT 100`, []);
+        const rows = result.result?.resultRows || [];
+        
+        if (rows.length === 0) {
+            showNoResults();
+        } else {
+            renderTable(rows);
+            elements.resultsHeader.innerHTML = `<i class="fas fa-eye"></i> View: ${viewName} · ${rows.length} rows`;
+        }
+        
+    } catch (error) {
+        console.error('Failed to load view:', error);
+        showNoResults();
     }
 }
 
@@ -213,7 +267,41 @@ export function updateTreeTriggers(triggers) {
                 <span class="empty-text">[no triggers]</span>
             </div>
         `;
+        return;
     }
+    
+    let html = '';
+    triggers.forEach(trigger => {
+        const triggerName = trigger.name || trigger;
+        html += `
+            <div class="tree-item" data-trigger="${triggerName}">
+                <i class="fas fa-bolt"></i>
+                ${triggerName}
+            </div>
+        `;
+    });
+    
+    elements.treeTriggers.innerHTML = html;
+    
+    document.querySelectorAll('.tree-item[data-trigger]').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            const triggerName = item.dataset.trigger;
+            console.log('⚡ Trigger selected:', triggerName);
+            
+            // 🔥 SALVA O ITEM SELECIONADO
+            localStorage.setItem('sqlite-studio-last-item', JSON.stringify({
+                type: 'trigger',
+                name: triggerName
+            }));
+            
+            item.classList.add('active');
+            elements.resultsHeader.innerHTML = `<i class="fas fa-bolt"></i> Trigger: ${triggerName}`;
+        });
+    });
 }
 
 // ===== UI STATE MESSAGES =====
@@ -298,19 +386,21 @@ export function updateRunButtonState() {
     const sqlEditor = elements.sqlEditor;
     if (!sqlEditor) return;
     
-    const hasText = sqlEditor.value.trim().length > 0;
-    const hasDatabase = db !== null;
-    
-    // Log para debug
-    console.log('🔘 Run button check:', { 
-        hasText, 
-        hasDatabase, 
-        valueLength: sqlEditor.value.length,
-        dbExists: !!db,
-        disabled: !(hasText && hasDatabase)
+    import('./state.js').then(({ db, currentDatabase }) => {
+        const hasText = sqlEditor.value.trim().length > 0;
+        const hasDatabase = currentDatabase !== null;
+        
+        console.log('🔘 Run button check:', { 
+            hasText, 
+            hasDatabase,
+            currentDatabase,
+            valueLength: sqlEditor.value.length,
+            dbExists: !!db,
+            disabled: !(hasText && hasDatabase)
+        });
+        
+        elements.runBtn.disabled = !(hasText && hasDatabase);
     });
-    
-    elements.runBtn.disabled = !(hasText && hasDatabase);
 }
 
 // ===== UI RENDERING =====

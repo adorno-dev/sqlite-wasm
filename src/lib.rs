@@ -108,10 +108,11 @@ pub use bindings::{initialize_bindings, WasmApi};
 /// This function uses event-based waiting rather than polling or sleeps,
 /// ensuring optimal performance. The overhead after initialization is zero.
 #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart")]
-pub async fn autostart(worker_path: &str, database_name: &str) -> Result<WasmApi, wasm_bindgen::JsValue> {
+// pub async fn autostart(worker_path: &str, database_name: &str) -> Result<WasmApi, wasm_bindgen::JsValue> {
+pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsValue> {
     worker::initialize_worker(worker_path).await?;
     worker::wait_for_worker().await?;
-    database::open(database_name).await?;
+    // database::open(database_name).await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())
 }

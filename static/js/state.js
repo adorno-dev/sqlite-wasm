@@ -38,7 +38,10 @@ export const elements = {
     exportJsonBtn: document.querySelector('[title="Copy as JSON"]')
 };
 
-export function setDb(newDb) { db = newDb; }
+export function setDb(newDb) { 
+    console.log('📌 setDb chamado com:', newDb);
+    db = newDb; 
+}
 export function setCurrentDatabase(newDb) { currentDatabase = newDb; }
 export function setAvailableDatabases(newDbs) { availableDatabases = newDbs; }
 export function setCurrentTable(newTable) { currentTable = newTable; }

@@ -476,7 +476,7 @@ body {
 
 .sql-editor {
     width: 100%;
-    min-height: 100px;
+    min-height: 180px;
     background: var(--input-bg);
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -705,17 +705,19 @@ body {
 
 .pagination-controls {
     display: flex;
-    gap: 0.2rem;
+    gap: 8px;
     align-items: center;
 }
 
 .pagination-controls .btn-small {
-    min-width: 28px;
-    height: 28px;
+    min-width: 32px;  /* ← um pouco maior */
+    height: 32px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border-radius: 4px;
+    margin: 0 2px;  /* ← margem lateral */
 }
 
 .pagination-controls .btn-small.active {
@@ -729,13 +731,15 @@ body {
     color: var(--text-primary);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 0.2rem 1.5rem 0.2rem 0.5rem;
-    font-size: 0.75rem;
+    padding: 0.4rem 2rem 0.4rem 1rem;  /* ← aumenta o padding */
+    font-size: 0.8rem;
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239b9b9b' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%239b9b9b' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 0.3rem center;
+    background-position: right 0.5rem center;
+    background-size: 12px;
+    min-width: 70px;  /* ← largura mínima */
 }
 
 .page-size:hover {
@@ -804,4 +808,97 @@ body {
     margin-left: auto;
     font-size: 0.7rem;
     color: var(--accent);
+}
+
+/* Tema Light - Adicione no final do studio.css */
+body.light {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eaeef2;
+    --bg-hover: #e1e4e8;
+    --border: #d0d7de;
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --text-muted: #6e7781;
+    --accent: #0969da;
+    --accent-hover: #0a6bdd;
+    --accent-soft: rgba(9, 105, 218, 0.1);
+    --success: #1a7f37;
+    --error: #cf222e;
+    --warning: #9a6700;
+    --code-bg: #f0f3f7;
+    --input-bg: #ffffff;
+    --shadow: 0 8px 24px rgba(140,149,159,0.2);
+}
+
+/* Ajustes específicos para light mode */
+body.light .sql-editor {
+    background: var(--input-bg);
+    color: var(--text-primary);
+    border-color: var(--border);
+}
+
+body.light .db-name,
+body.light .db-option {
+    background: var(--bg-secondary);
+}
+
+body.light .db-option:hover {
+    background: var(--bg-hover);
+}
+
+body.light .tree-item:hover {
+    background: var(--bg-hover);
+}
+
+body.light .data-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+body.light .data-table td {
+    color: var(--text-primary);
+}
+
+body.light .data-table tr:hover td {
+    background: var(--bg-hover);
+}
+
+body.light .btn-icon,
+body.light .btn-small {
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+
+body.light .btn-icon:hover,
+body.light .btn-small:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+body.light .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+body.light .btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+body.light .empty-state,
+body.light .error-state {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
+body.light .empty-state p,
+body.light .error-state p {
+    color: var(--text-secondary);
+}
+
+body.light .null-value {
+    color: var(--text-muted);
 }
