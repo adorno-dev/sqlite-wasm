@@ -1,0 +1,44 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+      
+    - name: Install tools
+      run: |
+        cargo install wasm-pack minix || true
+        sudo apt-get install -y brotli gzip
+      
+    - name: Build
+      run: |
+        chmod +x ./build
+        ./build
+      
+    - name: Copy demo files
+      run: |
+        cp index.html pkg/
+        cp webserver.js pkg/ 2>/dev/null || true
+        cp -r sqlite.org pkg/ 2>/dev/null || true
+      
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./pkg
+        force_orphan: true
