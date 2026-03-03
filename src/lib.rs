@@ -27,15 +27,15 @@
 //! ## Quick Start
 //! 
 //! ```rust
-//! use sqlite_wasm::autostart;
+//! use sqlite_wasm::{autostart, open};
 //! 
 //! #[wasm_bindgen]
 //! pub async fn main() -> Result<(), JsValue> {
-//!     // One-line initialization
-//!     let db = autostart(
-//!         "/sqlite.org/sqlite3-worker1.js",
-//!         "myapp.sqlite3"
-//!     ).await?;
+//!     // One-line initialization (worker only)
+//!     let db = autostart("/sqlite.org/sqlite3-worker1.js").await?;
+//!     
+//!     // Open specific database
+//!     open("myapp.sqlite3").await?;
 //!     
 //!     // Create table
 //!     db.exec("CREATE TABLE users (id INTEGER, name TEXT)", vec![]).await?;
@@ -60,24 +60,20 @@ pub use worker::{initialize_worker, wait_for_worker};
 pub use database::{close, db_id, exec, is_open, open, query};
 pub use bindings::{initialize_bindings, WasmApi};
 
-/// One-stop initialization: creates worker, waits for ready, opens database, exposes bindings
+/// One-stop initialization: creates worker, waits for ready, exposes bindings
 /// 
 /// This is the recommended way to initialize the SQLite WASM system. It performs
 /// all necessary steps in the correct order:
 /// 
 /// 1. Creates the Web Worker
 /// 2. Waits for the worker to be ready (receives 'worker1-ready' message)
-/// 3. Opens the specified database with OPFS
-/// 4. Exposes the global `window.wasm` object with camelCase methods
+/// 3. Exposes the global `window.wasm` object with camelCase methods
 /// 
 /// # Arguments
 /// * `worker_path` - Path to the SQLite worker script.
 ///   Typically this points to the official SQLite worker, e.g.:
 ///   - `"/sqlite.org/sqlite3-worker1.js"`
 ///   - `"/static/sqlite3-worker1.js"`
-/// 
-/// * `database_name` - Name of the database file (e.g., `"myapp.sqlite3"`).
-///   The file will be created in OPFS if it doesn't exist.
 /// 
 /// # Returns
 /// * `Ok(WasmApi)` - A type-safe Rust wrapper with `exec` and `query` methods.
@@ -89,30 +85,35 @@ pub use bindings::{initialize_bindings, WasmApi};
 /// # Examples
 /// 
 /// ```rust
-/// // Rust usage
-/// let db = autostart("/sqlite.org/sqlite3-worker1.js", "app.sqlite3").await?;
+/// // Rust usage - initialize worker
+/// let db = autostart("/sqlite.org/sqlite3-worker1.js").await?;
+/// 
+/// // Open a database (separate step)
+/// open("app.sqlite3").await?;
+/// 
+/// // Now execute queries
 /// db.exec("CREATE TABLE users (id INTEGER)", vec![]).await?;
 /// ```
 /// 
 /// ```javascript
-/// // JavaScript usage (after calling autostart)
+/// // JavaScript usage
+/// await wasm.initializeWorker("/sqlite.org/sqlite3-worker1.js");
+/// await wasm.open("app.sqlite3");
 /// await wasm.exec("CREATE TABLE users (id INTEGER)", []);
 /// const users = await wasm.query("SELECT * FROM users", []);
 /// ```
 /// 
 /// # Idempotency
-/// The worker and database are singletons. Subsequent calls to `autostart`
+/// The worker is a singleton. Subsequent calls to `autostart`
 /// will return `Ok(WasmApi)` immediately after the first successful initialization.
 /// 
 /// # Performance
 /// This function uses event-based waiting rather than polling or sleeps,
 /// ensuring optimal performance. The overhead after initialization is zero.
 #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart")]
-// pub async fn autostart(worker_path: &str, database_name: &str) -> Result<WasmApi, wasm_bindgen::JsValue> {
 pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsValue> {
     worker::initialize_worker(worker_path).await?;
     worker::wait_for_worker().await?;
-    // database::open(database_name).await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())
 }

@@ -1,4 +1,4 @@
-# SQLite WASM with Rust
+# SQLite WASM
 
 [![crates.io](https://img.shields.io/crates/v/sqlite-wasm.svg)](https://crates.io/crates/sqlite-wasm)
 [![docs.rs](https://docs.rs/sqlite-wasm/badge.svg)](https://docs.rs/sqlite-wasm)
@@ -6,177 +6,298 @@
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://rust-lang.org)
 [![WASM](https://img.shields.io/badge/target-wasm32-purple.svg)](https://webassembly.org)
 
-A high-performance SQLite wrapper for WebAssembly using Rust. This project provides a safe and efficient way to use SQLite in the browser with OPFS (Origin Private File System) support.
+**A high-performance SQLite wrapper for WebAssembly with OPFS support**  
+Zero-cost abstractions • Type-safe API • Persistent storage • Single-threaded by design
+
+---
 
 ## ✨ Features
 
-- 🚀 **High Performance**: Written in Rust, compiled to WASM
-- 🔒 **OPFS Support**: Persistent storage using Origin Private File System
-- 🧵 **Web Worker**: Database operations run in a separate thread
-- 📦 **Auto-minification**: JS glue code automatically minified
-- 🔐 **COOP/COEP Headers**: Proper headers for SharedArrayBuffer support
-- 📊 **Compression**: Brotli/Gzip compression for WASM files
-- 🎯 **Type Safe**: Strongly typed Rust API
-- 🔄 **Async/Await**: Promise-based API for JavaScript
+| Icon | Feature | Description |
+|------|---------|-------------|
+| 🚀 | **Zero-cost abstractions** | Worker management with `OnceLock` and atomic counters |
+| 🔒 | **OPFS persistence** | Databases survive page reloads and browser restarts |
+| 🧵 | **Web Worker** | Database operations run in a separate thread |
+| 📦 | **Auto-minification** | JS glue code automatically minified (Brotli/Gzip) |
+| 🔐 | **COOP/COEP Headers** | Proper headers for SharedArrayBuffer support |
+| 🎯 | **Type Safe** | Strongly typed Rust API with proper error handling |
+| 🔄 | **Async/Await** | Promise-based API for JavaScript |
+| ⚡ | **Atomic operations** | Lock-free message passing with `AtomicU32` |
 
-## 📋 Prerequisites
+---
 
-- Rust (stable) with wasm32-unknown-unknown target
-- Node.js (for development server)
-- wasm-pack
-- minix (for JS minification)
-- brotli & gzip (for WASM compression)
+## 🚀 Test It Live
 
-## 🛠️ Installation
+**👉 [Try SQLite Studio Online](https://adorno-dev.github.io/sqlite-wasm)**  
+No installation needed. Opens directly in your browser.
+
+---
+
+## 📦 Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+sqlite-wasm = "0.1"
+```
+
+Or via CLI:
 
 ```bash
-# Install Rust target
+cargo add sqlite-wasm
+```
+
+---
+
+## 🛠️ Build Dependencies
+
+**1. Rust WASM target**
+```bash
 rustup target add wasm32-unknown-unknown
+```
 
-# Install wasm-pack
+**2. wasm-pack**
+```bash
 cargo install wasm-pack
+```
 
-# Install minix for JS minification
+**3. minix (JS minification)**
+```bash
 cargo install minix
+```
 
-# Install compression tools (Ubuntu/Debian)
+**4. Compression tools**
+
+Ubuntu / Debian:
+```bash
 sudo apt install brotli gzip
+```
 
-# Install compression tools (MacOS)
+macOS:
+```bash
 brew install brotli
 ```
 
-## 🚀 Usage
+These tools compile to `wasm32`, generate bindings, minify JS, and compress the final output.
 
-### 1. Clone and build
+---
 
-```bash
-git clone https://github.com/yourusername/sqlite-wasm
-cd sqlite-wasm
-chmod +x build.sh
-./build.sh
-```
-
-### 2. Start the server
+## 🔨 Building
 
 ```bash
-NODE_ENV=production node webserver.js
+# Make it executable (first time only)
+chmod +x build
+
+# Build everything
+./build
 ```
 
-### 3. Open in browser
+The script automatically:
+- ✅ Compiles Rust to WASM
+- ✅ Generates bindings
+- ✅ Minifies JS glue code
+- ✅ Applies Brotli/Gzip compression
+- ✅ Produces optimized artifacts in `pkg/`
+
+---
+
+## 🦀 Rust Usage
+
+### Quick Start
+
+```rust
+use sqlite_wasm::{autostart, open, close};
+
+#[wasm_bindgen]
+pub async fn example() -> Result<(), JsValue> {
+    // 1. Initialize worker
+    let db = autostart("/sqlite.org/sqlite3-worker1.js").await?;
+    
+    // 2. Open database
+    open("myapp.sqlite3").await?;
+    
+    // 3. Create table
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS users (id INTEGER, name TEXT)",
+        vec![]
+    ).await?;
+    
+    // 4. Insert data
+    db.exec(
+        "INSERT INTO users VALUES (?, ?)",
+        vec![1.into(), "Alice".into()]
+    ).await?;
+    
+    // 5. Query data
+    let users = db.query("SELECT * FROM users", vec![]).await?;
+    
+    // 6. Close database
+    close().await?;
+    
+    Ok(())
+}
+```
+
+### API Reference
+
+| Function | Description |
+|----------|-------------|
+| `autostart(path)` | Initializes the SQLite worker (call once) |
+| `open(name)` | Opens or creates a database |
+| `exec(sql, params)` | Executes SQL without returning rows |
+| `query(sql, params)` | Executes SELECT and returns rows |
+| `close()` | Closes the current database |
+| `is_open()` | Checks if a database is open |
+| `db_id()` | Returns current database ID (debug) |
+
+---
+
+## 🌐 JavaScript Usage
+
+After initialization, the global `wasm` object is available with all methods.
+
+### Quick Start
+
+```javascript
+import init from './pkg/sqlite_wasm.js';
+
+async function start() {
+    // 1. Load WASM module
+    await init();
+    
+    // 2. Initialize worker
+    await wasm.autostart('/sqlite.org/sqlite3-worker1.js');
+    
+    // 3. Open database
+    await wasm.open('app.db');
+    
+    // 4. Create table
+    await wasm.exec(
+        `CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE
+        )`,
+        []
+    );
+    
+    // 5. Insert data
+    await wasm.exec(
+        "INSERT INTO users (name, email) VALUES (?, ?)",
+        ["Alice", "alice@example.com"]
+    );
+    
+    // 6. Query data
+    const result = await wasm.query("SELECT * FROM users", []);
+    console.log('Users:', result.resultRows);
+    
+    // 7. Close database
+    await wasm.close();
+}
+
+start().catch(console.error);
+```
+
+### JavaScript API
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `autostart(path)` | Initializes worker | `await wasm.autostart('/sqlite.org/sqlite3-worker1.js')` |
+| `open(name)` | Opens/creates database | `await wasm.open('mydb.sqlite3')` |
+| `exec(sql, params)` | Executes SQL | `await wasm.exec("INSERT INTO users VALUES (?)", ["João"])` |
+| `query(sql, params)` | Runs SELECT | `const res = await wasm.query("SELECT * FROM users", [])` |
+| `close()` | Closes database | `await wasm.close()` |
+
+---
+
+## 🏗️ Architecture
 
 ```
-http://localhost:8080
+┌─────────────────┐
+│   Your App      │
+│   (Rust/JS)     │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│   sqlite-wasm   │
+│   ┌────────────┐│
+│   │  Worker    ││  ── Singleton, auto-managed
+│   │  Manager   ││
+│   └────────────┘│
+│   ┌────────────┐│
+│   │   Message  ││  ── Atomic counters, oneshot channels
+│   │   Passing  ││
+│   └────────────┘│
+│   ┌────────────┐│
+│   │    OPFS    ││  ── Persistent, high-performance
+│   │   Storage  ││
+│   └────────────┘│
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  SQLite Worker  │
+│  (JavaScript)   │
+└─────────────────┘
 ```
+
+---
+
+## ⚙️ Performance Optimizations
+
+```toml
+[profile.release]
+opt-level = "z"      # Optimize for size
+lto = true           # Link time optimization
+codegen-units = 1    # Maximum optimization
+panic = "abort"      # Remove unwinding
+strip = "debuginfo"  # Remove debug symbols
+```
+
+| File | Original | Brotli | Reduction |
+|------|----------|--------|-----------|
+| sqlite_wasm.js | 16KB | 12KB | 25% |
+| sqlite_wasm_bg.wasm | 47KB | 17KB | 64% |
+| sqlite3.wasm | 835KB | 336KB | 60% |
+
+---
 
 ## 📁 Project Structure
 
 ```
-.
-├── src/
-│   └── lib.rs           # Rust source code
-├── pkg/                  # Generated WASM package
-│   ├── sqlite_wasm.js    # Glue code (minified)
-│   ├── sqlite_wasm_bg.wasm
-│   └── sqlite-wasm/      # SQLite JS files
-├── sqlite-wasm/          # Original SQLite files
-├── index.html            # Test page
-├── webserver.js          # Express server
-├── build.sh              # Build script
-├── Cargo.toml            # Rust dependencies
-└── Trunk.toml            # Trunk configuration
+sqlite-wasm/
+├── src/               # Rust source code
+│   ├── lib.rs
+│   └── modules/
+│       └── core/
+│           ├── worker.rs
+│           ├── database.rs
+│           └── bindings.rs
+├── sqlite.org/        # Official SQLite files
+├── pkg/               # Generated WASM package
+├── build              # Build script
+├── webserver.js       # Development server
+└── index.html         # Test playground
 ```
 
-## 📝 API Reference
+---
 
-### Initialize Worker
-```javascript
-await wasm.initialize_worker("/sqlite-wasm/sqlite3-worker1.js");
-```
+## 🌍 Browser Requirements
 
-### Open Database
-```javascript
-await wasm.open();
-```
+- WebAssembly support
+- Web Workers
+- OPFS (Origin Private File System)
+- COOP/COEP headers (Cross-Origin Isolation)
 
-### Execute SQL (no return)
-```javascript
-await wasm.exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)", []);
-await wasm.exec("INSERT INTO users (name) VALUES (?)", ["Alice"]);
-```
+**Recommended:** Latest Chrome, Edge, or other Chromium-based browsers.
 
-### Query SQL (with return)
-```javascript
-const users = await wasm.query("SELECT * FROM users", []);
-console.log(users);
-```
-
-### Close Database
-```javascript
-await wasm.close();
-```
-
-## 🏗️ Build Script Features
-
-The `build.sh` script automatically:
-
-1. Compiles Rust to WASM with `wasm-pack`
-2. Minifies the glue code (`sqlite_wasm.js`)
-3. Copies SQLite JS files to the package
-4. Compresses WASM files with Brotli and Gzip
-5. Shows final sizes of all generated files
-
-## ⚙️ Configuration Files
-
-### `Cargo.toml` (optimized for size)
-```toml
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-```
-
-### `webserver.js` (with compression)
-```javascript
-app.use(compression({ level: 9 }));
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-  next();
-});
-```
-
-## 📊 Performance
-
-| File | Original | Compressed | Reduction |
-|------|----------|------------|-----------|
-| sqlite_wasm.js | 16KB | 12KB | 25% |
-| sqlite_wasm_bg.wasm | 47KB | 17KB (Brotli) | 64% |
-| sqlite3.wasm | 835KB | 336KB (Brotli) | 60% |
-
-## 🤝 Contributing
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing`)
-5. Open a Pull Request
-
-**Made with ❤️ for the Rust + WASM community**
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT © [adorno-dev](https://github.com/adorno-dev)
 
-## 🙏 Acknowledgments
+---
 
-- [SQLite](https://sqlite.org) for the amazing database
-- [Rust](https://rust-lang.org) for the performance
-- [wasm-pack](https://github.com/rustwasm/wasm-pack) for the tooling
-
-### 📧 Contact
-
-Project Link: [https://github.com/adorno-dev/sqlite-wasm](https://github.com/adorno-dev/sqlite-wasm)
-
-
-**Note**: This project requires COOP/COEP headers to be set on the server for OPFS support with SharedArrayBuffer.
+Built with 🦀 and ❤️ for maximum performance  
+Made in Rust · Runs in Browser · Powered by SQLite
