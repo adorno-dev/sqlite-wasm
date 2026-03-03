@@ -1,6 +1,6 @@
 // static/js/database.js
 
-import { autostart } from '../../pkg/sqlite_wasm.js';
+import { autostart } from '../../../pkg/sqlite_wasm.js';
 import { 
     db, setDb, currentDatabase, setCurrentDatabase, 
     availableDatabases, setAvailableDatabases,
@@ -19,7 +19,7 @@ let workerInitialized = false;
 
 async function ensureWorker() {
     if (!workerInitialized) {
-        const { initialize_worker } = await import('../../pkg/sqlite_wasm.js');
+        const { initialize_worker } = await import('../../../pkg/sqlite_wasm.js');
         await initialize_worker('/sqlite.org/sqlite3-worker1.js');
         workerInitialized = true;
     }
@@ -29,7 +29,7 @@ export async function createNewDatabase(dbName) {
     console.log('📦 Creating new database:', dbName);
     
     try {
-        const { open } = await import('../../pkg/sqlite_wasm.js');
+        const { open } = await import('../../../pkg/sqlite_wasm.js');
         const { setCurrentDatabase, availableDatabases, setAvailableDatabases } = await import('./state.js');
         
         console.log('1️⃣ Opening database...');

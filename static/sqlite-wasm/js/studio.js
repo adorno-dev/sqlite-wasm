@@ -1,6 +1,6 @@
 // static/js/studio.js
 
-import init from '../../pkg/sqlite_wasm.js';
+import init from '../../../pkg/sqlite_wasm.js';
 import { 
     elements, setAvailableDatabases, setDb, setCurrentDatabase,
     setPageSize, setCurrentPage, currentTable, lastResults, pageSize,
@@ -21,7 +21,7 @@ async function initialize() {
         console.log('🚀 Initializing SQLite Studio...');
         await init();
         
-        const { autostart, open } = await import('../../pkg/sqlite_wasm.js');
+        const { autostart, open } = await import('../../../pkg/sqlite_wasm.js');
         const { loadDatabaseSchema, loadTableData } = await import('./database.js');
         const { setCurrentTable, setDb, setCurrentDatabase, setAvailableDatabases } = await import('./state.js');
         const { showNoDatabases, updateDatabaseSelector, populateDatabaseDropdown, updateRunButtonState } = await import('./ui.js');
@@ -38,7 +38,7 @@ async function initialize() {
         
         // 1️⃣ Inicializa worker
         console.log('1️⃣ Initializing worker...');
-        const workerDb = await autostart('/sqlite.org/sqlite3-worker1.js');
+        const workerDb = await autostart('/static/sqlite.org/sqlite3-worker1.js');
         setDb(workerDb);
         
         // 2️⃣ Escaneia bancos existentes

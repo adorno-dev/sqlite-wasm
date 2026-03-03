@@ -2,18 +2,36 @@
 
 //! Build script for sqlite-wasm crate.
 //! 
-//! This build script handles copying of SQLite native files and optional
+//! This build script handles copying of static assets and optional
 //! minification of JavaScript assets in release builds.
 //! 
 //! # Functions
 //! 
-//! * Copies SQLite files from `sqlite.org/` to:
+//! * Copies static assets from configured source paths to:
 //!   - `OUT_DIR` for compilation
-//!   - `pkg/sqlite.org/` for distribution
+//!   - `pkg/` for distribution
+//! 
+//! Currently copies:
+//!   - `static/sqlite.org/` → `pkg/static/sqlite.org/` (SQLite native files and WASM modules)
+//!   - `static/coi-serviceworker/` → `pkg/static/coi-serviceworker/` (COI service worker files)
+//! 
+//! # Configuration
+//! 
+//! To add more static assets, extend the `STATIC_ASSETS` array with `(source_path, dest_name)` tuples:
+//! ```rust
+//! const STATIC_ASSETS: &[(&str, &str)] = &[
+//!     ("static/sqlite.org", "sqlite.org"),
+//!     ("static/coi-serviceworker", "coi-serviceworker"),
+//!     ("node_modules/some-library/dist", "some-library"),  // Copy from node_modules
+//!     ("third-party/assets", "vendor/assets"),             // Custom source paths
+//! ];
+//! ```
 //! 
 //! * In release mode, minifies JavaScript files using `minhtml`:
-//!   - The main glue code (`sqlite_wasm.js`)
+//!   - All JavaScript files in the copied directories
+//!   - Including main glue code (`sqlite_wasm.js`)
 //!   - SQLite engine files (`sqlite3.js`, worker files, proxy)
+//!   - Service worker files
 //! 
 //! # Dependencies
 //! 
@@ -27,36 +45,90 @@ use std::path::Path;
 use std::env;
 use std::process::Command;
 
+/// List of (source_path, dest_name) tuples to copy.
+/// 
+/// Each entry specifies:
+/// - Source path relative to project root
+/// - Destination directory name under `static/` in OUT_DIR and pkg/
+/// 
+/// This flexible format allows copying from anywhere in the project
+/// to a structured location in the output directories.
+const STATIC_ASSETS: &[(&str, &str)] = &[
+    ("static/sqlite-wasm", "sqlite-wasm"),
+    ("static/sqlite.org", "sqlite.org"),
+    ("static/coi-serviceworker", "coi-serviceworker"),
+    // Add more assets here as needed
+    // Example: ("node_modules/something/dist", "vendor/something"),
+];
+
 /// Main build script entry point.
+/// 
+/// # Steps
+/// 1. Copies all configured static assets to OUT_DIR and pkg/
+/// 2. In release mode, minifies all JavaScript files in pkg/static/
 fn main() {
-    copy_sqlite_files().expect("Failed to copy SQLite files");
+    for (src, dest_name) in STATIC_ASSETS {
+        copy_asset(src, dest_name)
+            .unwrap_or_else(|e| panic!("Failed to copy asset '{}' to '{}': {}", src, dest_name, e));
+    }
     
     if env::var("PROFILE").unwrap() == "release" {
         minify_all_js().expect("Failed to minify JavaScript files");
     }
 }
 
-/// Copies SQLite native files to both OUT_DIR and pkg directory.
-fn copy_sqlite_files() -> Result<(), Box<dyn std::error::Error>> {
-    let src_dir = Path::new("sqlite.org");
+/// Copies a static asset from source path to both OUT_DIR and pkg directory.
+/// 
+/// # Arguments
+/// * `src_path` - Source path relative to project root (e.g., "static/sqlite.org")
+/// * `dest_name` - Destination directory name under `static/` (e.g., "sqlite.org")
+/// 
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Success or error details
+/// 
+/// # Behavior
+/// - Source path can be anywhere in the project (not limited to static/)
+/// - Copies to `{OUT_DIR}/static/{dest_name}`
+/// - Copies to `pkg/static/{dest_name}` if pkg directory exists/can be created
+/// - Adds cargo rerun trigger for the source path
+/// - Skips gracefully if source doesn't exist (with warning)
+fn copy_asset(src_path: &str, dest_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let src_dir = Path::new(src_path);
+    
+    if !src_dir.exists() {
+        println!("cargo:warning=Source path '{}' does not exist, skipping", src_dir.display());
+        return Ok(());
+    }
+    
     let out_dir = env::var("OUT_DIR")?;
     
     // Copy to OUT_DIR
-    let dest_out = Path::new(&out_dir).join("sqlite.org");
+    let dest_out = Path::new(&out_dir).join("static").join(dest_name);
     fs::create_dir_all(&dest_out)?;
     copy_directory(src_dir, &dest_out)?;
     
     // Copy to pkg directory (if it exists/will exist)
-    let dest_pkg = Path::new("pkg").join("sqlite.org");
+    let dest_pkg = Path::new("pkg").join("static").join(dest_name);
     if fs::create_dir_all(&dest_pkg).is_ok() {
         copy_directory(src_dir, &dest_pkg)?;
     }
     
-    println!("cargo:rerun-if-changed=sqlite.org/");
+    println!("cargo:rerun-if-changed={}", src_path);
     Ok(())
 }
 
-/// Recursively copies a directory.
+/// Recursively copies a directory and all its contents.
+/// 
+/// # Arguments
+/// * `src` - Source directory path
+/// * `dst` - Destination directory path
+/// 
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Success or error details
+/// 
+/// # Note
+/// Creates destination directory if it doesn't exist and preserves
+/// directory structure.
 fn copy_directory(src: &Path, dst: &Path) -> Result<(), Box<dyn std::error::Error>> {
     for entry in fs::read_dir(src)? {
         let entry = entry?;
@@ -73,82 +145,74 @@ fn copy_directory(src: &Path, dst: &Path) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-/// Minifies JavaScript files in the `pkg` directory.
+/// Minifies all JavaScript files in the pkg/static directory recursively.
+/// 
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Success or error details
+/// 
+/// # Note
+/// Only runs in release mode and if pkg/static directory exists.
 fn minify_all_js() -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔧 Minifying JavaScript files...");
+    let pkg_static = Path::new("pkg").join("static");
     
-    let pkg_dir = Path::new("pkg");
-    
-    // Minify glue code
-    let root_js = pkg_dir.join("sqlite_wasm.js");
-    if root_js.exists() {
-        println!("  📄 Minifying: sqlite_wasm.js");
-        minify_file(&root_js)?;
-    }
-    
-    // Minify SQLite engine files
-    let sqlite_dir = pkg_dir.join("sqlite.org");
-    if sqlite_dir.exists() {
-        minify_sqlite_files(&sqlite_dir)?;
+    if pkg_static.exists() {
+        minify_directory(&pkg_static)?;
     }
     
     Ok(())
 }
 
-/// Minifies SQLite engine files in the specified directory.
-fn minify_sqlite_files(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let sqlite_files = [
-        "sqlite3.js",
-        "sqlite3-worker1.js", 
-        "sqlite3-opfs-async-proxy.js"
-    ];
-    
-    for &file in &sqlite_files {
-        let file_path = dir.join(file);
-        if file_path.exists() {
-            println!("  📄 Minifying: sqlite.org/{}", file);
-            
-            if let Err(e) = minify_file(&file_path) {
-                eprintln!("cargo:warning=⚠ Failed to minify {}: {}", file, e);
+/// Recursively minifies JavaScript files in a directory.
+/// 
+/// # Arguments
+/// * `dir` - Directory path to scan for JavaScript files
+/// 
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Success or error details
+/// 
+/// # Note
+/// Only processes files with `.js` extension.
+fn minify_directory(dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                if ext == "js" {
+                    minify_file(&path)?;
+                }
             }
-        } else {
-            eprintln!("cargo:warning=⚠ File not found: sqlite.org/{}", file);
+        } else if path.is_dir() {
+            minify_directory(&path)?;
         }
     }
-    
     Ok(())
 }
 
-/// Minifies a single JavaScript file using `minhtml`.
+/// Minifies a single JavaScript file using minhtml.
+/// 
+/// # Arguments
+/// * `path` - Path to the JavaScript file to minify
+/// 
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Success or error details
+/// 
+/// # Dependencies
+/// Requires `minhtml` to be installed and available in PATH.
+/// 
+/// # Panics
+/// Returns error if minhtml command fails or is not found.
 fn minify_file(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    // Create backup
-    let backup = path.with_extension("js.bak");
-    fs::copy(path, &backup)?;
+    let status = Command::new("minhtml")
+        .arg(path)
+        .arg("--output")
+        .arg(path)
+        .status()?;
     
-    // Run minifier
-    let output = Command::new("minhtml")
-        .arg("--minify-js")
-        .arg(path.to_str().unwrap())
-        .output()
-        .map_err(|e| format!("Failed to execute minhtml: {}. Install with: cargo install minhtml", e))?;
-    
-    if !output.status.success() {
-        // Restore backup on failure
-        fs::rename(&backup, path)?;
-        let error_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Minification failed: {}", error_msg).into());
+    if !status.success() {
+        return Err(format!("minhtml failed on file: {}", path.display()).into());
     }
-    
-    // Write minified content
-    fs::write(path, output.stdout)?;
-    
-    // Remove backup on success
-    let _ = fs::remove_file(&backup);
-    
-    // Show size reduction
-    let size = fs::metadata(path)?.len();
-    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-    println!("    ✅ Minified: {} ({} bytes)", file_name, size);
     
     Ok(())
 }

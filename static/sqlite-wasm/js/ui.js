@@ -107,7 +107,7 @@ async function switchDatabase(dbName) {
     console.log('🔄 Switching database to:', dbName);
     
     const { setCurrentDatabase } = await import('./state.js');
-    const { open } = await import('../../pkg/sqlite_wasm.js');
+    const { open } = await import('../../../pkg/sqlite_wasm.js');
     
     if (dbName === null) {
         setCurrentDatabase(null);

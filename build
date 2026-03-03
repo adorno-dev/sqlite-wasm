@@ -8,6 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${BLUE}🚀 Building...${NC}"
+npm install -y
 
 # 1. Generate package
 echo -e "${GREEN}📦 Generating package...${NC}"
@@ -20,7 +21,7 @@ echo "  ✅ sqlite_wasm.js minified"
 
 # 3. Copy SQLite files
 echo -e "${GREEN}📋 Copying SQLite files...${NC}"
-mkdir -p pkg/sqlite-wasm
+# mkdir -p pkg/sqlite-wasm
 cp sqlite-wasm/*.js pkg/sqlite-wasm/ 2>/dev/null || true
 cp sqlite-wasm/*.wasm pkg/sqlite-wasm/ 2>/dev/null || true
 echo "  ✅ SQLite files copied"
