@@ -1,0 +1,51 @@
+name: Build Express Server
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v3
+      
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: 🦀 Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+      
+    - name: 📦 Install tools
+      run: |
+        cargo install wasm-pack minix
+        sudo apt-get update
+        sudo apt-get install -y brotli gzip
+      
+    - name: 🔨 Build (release)
+      run: |
+        chmod +x ./build
+        ./build
+      
+    - name: 🚀 Start server
+      run: |
+        NODE_ENV=production node webserver.js &
+        sleep 5
+      
+    - name: ✅ Test server
+      run: curl -f http://localhost:8080 || exit 1
+      
+    - name: 📦 Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: wasm-package
+        path: pkg/
