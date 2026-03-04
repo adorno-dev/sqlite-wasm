@@ -1,6 +1,6 @@
 // static/js/studio.js
 
-import * as wasm from '../../../pkg/sqlite_wasm.js';
+import * as wasm from '/sqlite-wasm.js';
 const { default: init, autostart, open } = wasm;
 import {
     elements, setAvailableDatabases, setDb, setCurrentDatabase,
@@ -31,9 +31,7 @@ export function toggleDeleteButton(show) {
 // ===== INITIALIZATION =====
 async function initialize() {
     try {
-        await init();
-
-        const { autostart, open } = await import('../../../pkg/sqlite_wasm.js');
+        const { autostart, open } = await import('/sqlite-wasm.js');
         const { loadDatabaseSchema, loadTableData } = await import('./database.js');
         const { setCurrentTable, setCurrentView, setDb, setCurrentDatabase, setAvailableDatabases, setTotalRows, setCurrentPage, pageSize } = await import('./state.js');
         const {

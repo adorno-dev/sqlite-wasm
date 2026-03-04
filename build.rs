@@ -56,7 +56,6 @@ use std::process::Command;
 const STATIC_ASSETS: &[(&str, &str)] = &[
     ("static/sqlite-wasm", "sqlite-wasm"),
     ("static/sqlite.org", "sqlite.org"),
-    ("static/coi-serviceworker", "coi-serviceworker"),
     // Add more assets here as needed
     // Example: ("node_modules/something/dist", "vendor/something"),
 ];
@@ -108,7 +107,7 @@ fn copy_asset(src_path: &str, dest_name: &str) -> Result<(), Box<dyn std::error:
     copy_directory(src_dir, &dest_out)?;
     
     // Copy to pkg directory (if it exists/will exist)
-    let dest_pkg = Path::new("pkg").join("static").join(dest_name);
+    let dest_pkg = Path::new("dist").join("static").join(dest_name);
     if fs::create_dir_all(&dest_pkg).is_ok() {
         copy_directory(src_dir, &dest_pkg)?;
     }

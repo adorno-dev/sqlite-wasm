@@ -103,7 +103,7 @@ export async function switchDatabase(dbName) {
 
     const { setCurrentDatabase, setCurrentTable } = await import('./state.js');
     const { loadDatabaseSchema } = await import('./database.js');
-    const { open } = await import('../../../pkg/sqlite_wasm.js');
+    const { open } = await import('/sqlite-wasm.js');
 
     setCurrentDatabase(dbName);
     toggleDeleteButton(!!dbName);
