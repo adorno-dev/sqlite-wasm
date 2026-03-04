@@ -1,6 +1,7 @@
 // static/js/database.js
 
-import { autostart } from '../../../pkg/sqlite_wasm.js';
+import * as wasm from '../../../pkg/sqlite_wasm.js';
+const { autostart, open, close } = wasm;
 import { 
     db, setDb, currentDatabase, setCurrentDatabase, 
     availableDatabases, setAvailableDatabases,
