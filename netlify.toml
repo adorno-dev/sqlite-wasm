@@ -1,9 +1,13 @@
 [build]
   command = """
-    # Instala o trunk se não existir
-    cargo install trunk || true && \
+    # Instala o Rust (caso não exista)
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    export PATH="$PATH:$HOME/.cargo/bin" && \
+    source "$HOME/.cargo/env" && \
     # Garante que o target wasm está disponível
     rustup target add wasm32-unknown-unknown && \
+    # Instala o trunk
+    cargo install trunk && \
     # Executa o build
     trunk build --release
   """
