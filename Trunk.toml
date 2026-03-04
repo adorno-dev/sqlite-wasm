@@ -4,6 +4,7 @@ dist = "dist"
 cargo = false
 release = true
 filehash = false
+no_sri = true
 # public-url = "/"
 
 [serve]
