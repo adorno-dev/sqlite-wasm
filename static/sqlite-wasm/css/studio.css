@@ -697,27 +697,47 @@ body {
     padding: 0.25rem 0;
     color: var(--text-secondary);
     font-size: 0.75rem;
+    position: relative;  /* ← pra gente posicionar absoluto */
 }
 
 .pagination-info {
     color: var(--text-muted);
+    min-width: 200px;
 }
 
 .pagination-controls {
     display: flex;
     gap: 8px;
     align-items: center;
+    position: absolute;  /* ← tira do fluxo */
+    left: 50%;
+    transform: translateX(-50%);  /* ← centraliza */
+}
+
+.pagination-limit {
+    min-width: 100px;
+    text-align: right;
+}
+
+.page-separator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }
 
 .pagination-controls .btn-small {
-    min-width: 32px;  /* ← um pouco maior */
+    min-width: 32px; 
     height: 32px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    margin: 0 2px;  /* ← margem lateral */
+    margin: 0 2px; 
 }
 
 .pagination-controls .btn-small.active {
@@ -901,4 +921,12 @@ body.light .error-state p {
 
 body.light .null-value {
     color: var(--text-muted);
+}
+
+#deleteDbBtn {
+    display: inline-flex;  /* visível por padrão */
+}
+
+#deleteDbBtn.hidden {
+    display: none;  /* escondido */
 }

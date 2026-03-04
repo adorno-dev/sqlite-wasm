@@ -111,7 +111,8 @@ static COUNTER: AtomicU32 = AtomicU32::new(0);
 pub async fn open(database_name: &str) -> Result<(), JsValue> {
     // If already opened, return immediately
     if DB_UID.lock().unwrap().is_some() {
-        return Ok(());
+        // return Ok(());
+        close().await?;
     }
 
     let args = Object::new();

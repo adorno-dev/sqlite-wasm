@@ -1,11 +1,12 @@
 // static/js/ui.js
 
-import { 
-    elements, db, currentDatabase, availableDatabases, 
+import {
+    elements, db, currentDatabase, availableDatabases,
     currentTable, currentPage, pageSize, totalRows, lastResults,
     setCurrentTable, setCurrentPage
 } from './state.js';
 import { loadTableData, createNewDatabase } from './database.js';
+import { toggleDeleteButton } from './studio.js'
 
 // ===== DROPDOWN FUNCTIONS =====
 export function toggleDropdown(e) {
@@ -17,7 +18,7 @@ export function toggleDropdown(e) {
 
 export function updateDatabaseSelector() {
     if (!elements.dbSelectorSpan) return;
-    
+
     if (currentDatabase) {
         elements.dbSelectorSpan.textContent = currentDatabase;
         elements.dbSelectorSpan.style.color = '';
@@ -32,22 +33,20 @@ export function updateDatabaseSelector() {
 export async function populateDatabaseDropdown() {
     const dropdown = elements.dbDropdown;
     if (!dropdown) return;
-    
+
     if (!dropdown._listenerAdded) {
         dropdown.addEventListener('click', async function handler(e) {
             const option = e.target.closest('.db-option');
             if (!option) return;
-            
+
             const dbName = option.getAttribute('data-db');
             if (dbName === undefined) return;
-            
+
             e.stopPropagation();
             e.preventDefault();
-            
-            console.log('👆 Clicked option with dbName:', dbName, 'currentDatabase:', currentDatabase);
-            
+
             dropdown.classList.remove('show');
-            
+
             if (dbName === 'null') {
                 if (currentDatabase !== null) {
                     await switchDatabase(null);
@@ -58,26 +57,23 @@ export async function populateDatabaseDropdown() {
         });
         dropdown._listenerAdded = true;
     }
-    
+
     const wasOpen = dropdown.classList.contains('show');
     dropdown.innerHTML = '';
-    
-    console.log('📋 Populating dropdown. Current DB:', currentDatabase);
-    console.log('📋 Available DBs:', availableDatabases);
-    
+
     if (currentDatabase) {
         const chooseOption = document.createElement('div');
         chooseOption.className = 'db-option choose-db';
         chooseOption.innerHTML = `<i class="fas fa-undo"></i> Choose a database`;
         chooseOption.setAttribute('data-db', 'null');
         dropdown.appendChild(chooseOption);
-        
+
         const separator = document.createElement('div');
         separator.className = 'db-separator';
         separator.innerHTML = '<hr>';
         dropdown.appendChild(separator);
     }
-    
+
     if (availableDatabases.length > 0) {
         [...new Set(availableDatabases)].forEach(dbName => {
             const option = document.createElement('div');
@@ -99,43 +95,42 @@ export async function populateDatabaseDropdown() {
         emptyOption.innerHTML = `<i class="fas fa-database"></i> No databases found`;
         dropdown.appendChild(emptyOption);
     }
-    
+
     if (wasOpen) dropdown.classList.add('show');
 }
 
-async function switchDatabase(dbName) {
-    console.log('🔄 Switching database to:', dbName);
-    
-    const { setCurrentDatabase } = await import('./state.js');
+export async function switchDatabase(dbName) {
+
+    const { setCurrentDatabase, setCurrentTable } = await import('./state.js');
+    const { loadDatabaseSchema } = await import('./database.js');
     const { open } = await import('../../../pkg/sqlite_wasm.js');
-    
+
+    setCurrentDatabase(dbName);
+    toggleDeleteButton(!!dbName);
+
     if (dbName === null) {
-        setCurrentDatabase(null);
-        localStorage.removeItem('sqlite-studio-last-db');
-        localStorage.removeItem('sqlite-studio-last-item');
-        updateDatabaseSelector();
+        setCurrentTable(null);
         showNoDatabases();
         updateTreeTables([]);
         updateTreeViews([]);
         updateTreeTriggers([]);
     } else {
+        setCurrentTable(null);
         await open(dbName);
-        setCurrentDatabase(dbName);
-        localStorage.setItem('sqlite-studio-last-db', dbName);
-        updateDatabaseSelector();
-        
-        const { loadDatabaseSchema } = await import('./database.js');
+
         await loadDatabaseSchema();
     }
-    
-    await populateDatabaseDropdown();
+
     updateRunButtonState();
+    updateDatabaseSelector();
+    await populateDatabaseDropdown();
 }
+
 
 // ===== TREE UPDATES =====
 export function updateTreeTables(tables) {
     if (!elements.treeTables) return;
-    
+
     if (tables.length === 0) {
         elements.treeTables.innerHTML = `
             <div class="tree-item empty-section">
@@ -145,7 +140,7 @@ export function updateTreeTables(tables) {
         `;
         return;
     }
-    
+
     let html = '';
     tables.forEach(table => {
         const tableName = table.name || table;
@@ -156,7 +151,7 @@ export function updateTreeTables(tables) {
             </div>
         `;
     });
-    
+
     elements.treeTables.innerHTML = html;
 
     if (currentTable) {
@@ -165,23 +160,26 @@ export function updateTreeTables(tables) {
             activeItem.classList.add('active');
         }
     }
-    
+
     document.querySelectorAll('.tree-item[data-table]').forEach(item => {
         item.addEventListener('click', () => {
             document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
                 el.classList.remove('active');
             });
-            
+
             const table = item.dataset.table;
             setCurrentTable(table);
-            
-            // 🔥 SALVA O ITEM SELECIONADO
+
             localStorage.setItem('sqlite-studio-last-item', JSON.stringify({
                 type: 'table',
                 name: table
             }));
-            
-            loadTableData(table);
+
+            // 🔥 RESETA A PÁGINA PARA 1
+            localStorage.setItem('sqlite-studio-current-page', '1');
+            setCurrentPage(1);
+
+            loadTableData(table, 1);  // ← PASSA PÁGINA 1
             item.classList.add('active');
         });
     });
@@ -189,7 +187,7 @@ export function updateTreeTables(tables) {
 
 export function updateTreeViews(views) {
     if (!elements.treeViews) return;
-    
+
     if (views.length === 0) {
         elements.treeViews.innerHTML = `
             <div class="tree-item empty-section">
@@ -199,7 +197,7 @@ export function updateTreeViews(views) {
         `;
         return;
     }
-    
+
     let html = '';
     views.forEach(view => {
         const viewName = view.name || view;
@@ -210,56 +208,84 @@ export function updateTreeViews(views) {
             </div>
         `;
     });
-    
+
     elements.treeViews.innerHTML = html;
-    
+
     document.querySelectorAll('.tree-item[data-view]').forEach(item => {
         item.addEventListener('click', () => {
             document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
                 el.classList.remove('active');
             });
-            
+
             const viewName = item.dataset.view;
-            console.log('👁️ Loading view:', viewName);
-            
-            // 🔥 SALVA O ITEM SELECIONADO
+
             localStorage.setItem('sqlite-studio-last-item', JSON.stringify({
                 type: 'view',
                 name: viewName
             }));
-            
+
+            // 🔥 RESETA A PÁGINA PARA 1
+            localStorage.setItem('sqlite-studio-current-page', '1');
+            setCurrentPage(1);
+
             item.classList.add('active');
-            loadViewData(viewName);
+            loadViewData(viewName, 1);  // ← PASSA PÁGINA 1
         });
     });
 }
 
-async function loadViewData(viewName) {
-    const { db } = await import('./state.js');
+// 🔥 MODIFICADA PARA RECEBER PÁGINA
+async function loadViewData(viewName, page = 1) {
+    const { db, setCurrentView, setTotalRows, pageSize } = await import('./state.js');
+    const { setCurrentTable } = await import('./state.js');
+    const { updatePagination } = await import('./ui.js');
+
     if (!db) return;
-    
+
     try {
+        setCurrentTable(null);
+        setCurrentView(viewName);
+        setTotalRows(0);
+
         elements.resultsHeader.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading view...`;
-        
-        const result = await db.query(`SELECT * FROM ${viewName} LIMIT 100`, []);
+
+        // 🔥 USA A PÁGINA RECEBIDA
+        const offset = (page - 1) * pageSize;
+        const result = await db.query(`SELECT * FROM ${viewName} LIMIT ${pageSize} OFFSET ${offset}`, []);
         const rows = result.result?.resultRows || [];
-        
+
+        // Tenta contar total (opcional)
+        let total = rows.length;
+        try {
+            const countResult = await db.query(`SELECT COUNT(*) as count FROM ${viewName}`, []);
+            total = countResult.result?.resultRows[0]?.count || rows.length;
+        } catch (e) { }
+
         if (rows.length === 0) {
             showNoResults();
+            setTotalRows(0);
         } else {
             renderTable(rows);
-            elements.resultsHeader.innerHTML = `<i class="fas fa-eye"></i> View: ${viewName} · ${rows.length} rows`;
+            elements.resultsHeader.innerHTML = `<i class="fas fa-eye"></i> View: ${viewName} · ${total} rows`;
+            setTotalRows(total);
         }
-        
+
+        updatePagination();
+
+        const { markActiveTreeItem } = await import('./ui.js');
+        markActiveTreeItem('view', viewName);
+
     } catch (error) {
         console.error('Failed to load view:', error);
         showNoResults();
+        setTotalRows(0);
+        updatePagination();
     }
 }
 
 export function updateTreeTriggers(triggers) {
     if (!elements.treeTriggers) return;
-    
+
     if (triggers.length === 0) {
         elements.treeTriggers.innerHTML = `
             <div class="tree-item empty-section">
@@ -269,7 +295,7 @@ export function updateTreeTriggers(triggers) {
         `;
         return;
     }
-    
+
     let html = '';
     triggers.forEach(trigger => {
         const triggerName = trigger.name || trigger;
@@ -280,24 +306,22 @@ export function updateTreeTriggers(triggers) {
             </div>
         `;
     });
-    
+
     elements.treeTriggers.innerHTML = html;
-    
+
     document.querySelectorAll('.tree-item[data-trigger]').forEach(item => {
         item.addEventListener('click', () => {
             document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
                 el.classList.remove('active');
             });
-            
+
             const triggerName = item.dataset.trigger;
-            console.log('⚡ Trigger selected:', triggerName);
-            
-            // 🔥 SALVA O ITEM SELECIONADO
+
             localStorage.setItem('sqlite-studio-last-item', JSON.stringify({
                 type: 'trigger',
                 name: triggerName
             }));
-            
+
             item.classList.add('active');
             elements.resultsHeader.innerHTML = `<i class="fas fa-bolt"></i> Trigger: ${triggerName}`;
         });
@@ -309,7 +333,7 @@ export function showNoDatabases() {
     if (elements.resultsHeader) {
         elements.resultsHeader.innerHTML = `<i class="fas fa-database"></i> No Database`;
     }
-    
+
     if (elements.tableWrapper) {
         elements.tableWrapper.innerHTML = `
             <div class="empty-state">
@@ -323,11 +347,16 @@ export function showNoDatabases() {
             </div>
         `;
     }
-    
+
     updateTreeTables([]);
     updateTreeViews([]);
     updateTreeTriggers([]);
-    
+
+    import('./state.js').then(({ setTotalRows }) => {
+        setTotalRows(0);
+        updatePagination();
+    });
+
     if (elements.paginationInfo) {
         elements.paginationInfo.textContent = '0 rows';
     }
@@ -335,11 +364,11 @@ export function showNoDatabases() {
 
 export function showNoTables() {
     updateTreeTables([]);
-    
+
     if (elements.resultsHeader) {
         elements.resultsHeader.innerHTML = `<i class="fas fa-table"></i> No Table Selected`;
     }
-    
+
     if (elements.tableWrapper) {
         elements.tableWrapper.innerHTML = `
             <div class="empty-state">
@@ -353,7 +382,7 @@ export function showNoTables() {
             </div>
         `;
     }
-    
+
     if (elements.paginationInfo) {
         elements.paginationInfo.textContent = '0 rows';
     }
@@ -369,11 +398,11 @@ export function showNoResults() {
             </div>
         `;
     }
-    
+
     if (elements.resultsHeader) {
         elements.resultsHeader.innerHTML = `<i class="fas fa-table"></i> No Results`;
     }
-    
+
     if (elements.paginationInfo) {
         elements.paginationInfo.textContent = '0 rows';
     }
@@ -382,23 +411,14 @@ export function showNoResults() {
 // ===== RUN BUTTON STATE =====
 export function updateRunButtonState() {
     if (!elements.runBtn) return;
-    
+
     const sqlEditor = elements.sqlEditor;
     if (!sqlEditor) return;
-    
+
     import('./state.js').then(({ db, currentDatabase }) => {
         const hasText = sqlEditor.value.trim().length > 0;
         const hasDatabase = currentDatabase !== null;
-        
-        console.log('🔘 Run button check:', { 
-            hasText, 
-            hasDatabase,
-            currentDatabase,
-            valueLength: sqlEditor.value.length,
-            dbExists: !!db,
-            disabled: !(hasText && hasDatabase)
-        });
-        
+
         elements.runBtn.disabled = !(hasText && hasDatabase);
     });
 }
@@ -409,15 +429,15 @@ export function renderTable(rows) {
         showNoResults();
         return;
     }
-    
+
     const columns = Object.keys(rows[0]);
-    
+
     let html = '<table class="data-table"><thead><tr>';
     columns.forEach(col => {
         html += `<th>${col}</th>`;
     });
     html += '</tr></thead><tbody>';
-    
+
     rows.forEach(row => {
         html += '<tr>';
         columns.forEach(col => {
@@ -425,9 +445,9 @@ export function renderTable(rows) {
         });
         html += '</tr>';
     });
-    
+
     html += '</tbody></table>';
-    
+
     elements.tableWrapper.innerHTML = html;
 }
 
@@ -446,27 +466,53 @@ function escapeHtml(text) {
 // ===== PAGINATION =====
 export function updatePagination() {
     if (!elements.paginationInfo) return;
-    
+
     const totalPages = Math.ceil(totalRows / pageSize);
     const start = ((currentPage - 1) * pageSize) + 1;
     const end = Math.min(currentPage * pageSize, totalRows);
-    
+
     if (totalRows === 0) {
         elements.paginationInfo.textContent = '0 rows';
     } else {
         elements.paginationInfo.textContent = `Showing ${start}-${end} of ${totalRows} rows`;
     }
-    
+
     let pageNumbersHtml = '';
     if (totalPages > 0) {
-        const maxVisible = Math.min(totalPages, 5);
-        for (let i = 1; i <= maxVisible; i++) {
+        // Calcula o range de páginas a mostrar (sempre 5 páginas ao redor da atual)
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+
+        // Ajusta se estiver no final
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        // Primeira página se não estiver no início
+        if (startPage > 1) {
+            pageNumbersHtml += `<button class="btn-small page-number" data-page="1">1</button>`;
+            if (startPage > 2) {
+                pageNumbersHtml += `<span class="page-separator">...</span>`;
+            }
+        }
+
+        // Páginas do range
+        for (let i = startPage; i <= endPage; i++) {
             const activeClass = i === currentPage ? 'active' : '';
             pageNumbersHtml += `<button class="btn-small page-number ${activeClass}" data-page="${i}">${i}</button>`;
         }
+
+        // Última página se não estiver no final
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                pageNumbersHtml += `<span class="page-separator">...</span>`;
+            }
+            pageNumbersHtml += `<button class="btn-small page-number" data-page="${totalPages}">${totalPages}</button>`;
+        }
     }
     elements.pageNumbers.innerHTML = pageNumbersHtml;
-    
+
+    // Remove event listeners antigos e adiciona novos
     document.querySelectorAll('.page-number').forEach(btn => {
         btn.addEventListener('click', () => {
             const page = parseInt(btn.dataset.page);
@@ -481,7 +527,7 @@ export function updatePagination() {
             }
         });
     });
-    
+
     if (elements.prevPageBtn) {
         elements.prevPageBtn.disabled = currentPage === 1;
         elements.prevPageBtn.onclick = () => {
@@ -498,7 +544,7 @@ export function updatePagination() {
             }
         };
     }
-    
+
     if (elements.nextPageBtn) {
         elements.nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
         elements.nextPageBtn.onclick = () => {
@@ -520,7 +566,7 @@ export function updatePagination() {
 // ===== EXPORT FUNCTIONS =====
 export function exportCSV() {
     if (!lastResults || lastResults.length === 0) return;
-    
+
     const columns = Object.keys(lastResults[0]);
     const csv = [
         columns.join(','),
@@ -528,24 +574,24 @@ export function exportCSV() {
             const val = row[col];
             if (val === null || val === undefined) return '';
             const strVal = String(val).replace(/"/g, '""');
-            return strVal.includes(',') || strVal.includes('"') || strVal.includes('\n') 
-                ? `"${strVal}"` 
+            return strVal.includes(',') || strVal.includes('"') || strVal.includes('\n')
+                ? `"${strVal}"`
                 : strVal;
         }).join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `export_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `export_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
 export function exportJSON() {
     if (!lastResults || lastResults.length === 0) return;
-    
+
     const json = JSON.stringify(lastResults, null, 2);
     navigator.clipboard.writeText(json).then(() => {
         const originalText = elements.exportJsonBtn.innerHTML;
@@ -556,5 +602,16 @@ export function exportJSON() {
     });
 }
 
-// No final do ui.js
+export function markActiveTreeItem(type, name) {
+    document.querySelectorAll('.tree-item[data-table], .tree-item[data-view], .tree-item[data-trigger]').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    const selector = `.tree-item[data-${type}="${name}"]`;
+    const activeItem = document.querySelector(selector);
+    if (activeItem) {
+        activeItem.classList.add('active');
+    }
+}
+
 window.updateRunButtonState = updateRunButtonState;

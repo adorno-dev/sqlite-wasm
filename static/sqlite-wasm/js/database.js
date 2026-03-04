@@ -13,6 +13,7 @@ import {
     updateRunButtonState, updateDatabaseSelector, 
     populateDatabaseDropdown, renderTable, updatePagination
 } from './ui.js';
+import { toggleDeleteButton } from './studio.js'
 
 // No início do database.js, após os imports
 let workerInitialized = false;
@@ -26,36 +27,26 @@ async function ensureWorker() {
 }
 
 export async function createNewDatabase(dbName) {
-    console.log('📦 Creating new database:', dbName);
     
     try {
         const { open } = await import('../../../pkg/sqlite_wasm.js');
         const { setCurrentDatabase, availableDatabases, setAvailableDatabases } = await import('./state.js');
         
-        console.log('1️⃣ Opening database...');
         await open(dbName);
         
-        console.log('2️⃣ Database opened/created');
-        
-        console.log('3️⃣ Setting current database...');
         setCurrentDatabase(dbName);
+        toggleDeleteButton(!!dbName);
         
-        console.log('4️⃣ Updating available databases...');
         if (!availableDatabases.includes(dbName)) {
             setAvailableDatabases([...availableDatabases, dbName]);
         }
         
-        console.log('5️⃣ Updating UI...');
         updateDatabaseSelector();
         await populateDatabaseDropdown();
         
-        console.log('6️⃣ Loading schema...');
         await loadDatabaseSchema();
         
-        console.log('7️⃣ Updating run button...');
         updateRunButtonState();
-        
-        console.log('✅ Database created successfully:', dbName);
         
     } catch (error) {
         console.error('❌ Failed to create database:', error);
@@ -91,6 +82,7 @@ export async function scanOPFSDatabases() {
 }
 
 export async function loadDatabaseSchema() {
+    const {db} = await import('./state.js');
     const currentDb = db;
     if (!currentDb) return;
     
@@ -104,7 +96,6 @@ export async function loadDatabaseSchema() {
             );
             tables = tablesResult.result?.resultRows || [];
         } catch (e) {
-            console.log('Error loading tables:', e);
             tables = [];
         }
         updateTreeTables(tables);
@@ -118,7 +109,6 @@ export async function loadDatabaseSchema() {
             );
             views = viewsResult.result?.resultRows || [];
         } catch (e) {
-            console.log('Error loading views:', e);
             views = [];
         }
         updateTreeViews(views);
@@ -132,7 +122,6 @@ export async function loadDatabaseSchema() {
             );
             triggers = triggersResult.result?.resultRows || [];
         } catch (e) {
-            console.log('Error loading triggers:', e);
             triggers = [];
         }
         updateTreeTriggers(triggers);
@@ -141,6 +130,9 @@ export async function loadDatabaseSchema() {
             const firstTable = tables[0].name || tables[0];
             setCurrentTable(firstTable);
             await loadTableData(firstTable);
+            // Importa e chama a função de marcar
+            const { markActiveTreeItem } = await import('./ui.js');
+            markActiveTreeItem('table', firstTable);
         } else {
             showNoTables();
             setCurrentTable(null);
@@ -153,6 +145,7 @@ export async function loadDatabaseSchema() {
 }
 
 export async function loadTableData(tableName, page = 1) {
+
     const currentDb = db;                
     if (!tableName || !currentDb) {
         showNoTables();   
@@ -160,20 +153,20 @@ export async function loadTableData(tableName, page = 1) {
     }         
     
     try {
+        // Se a página for 1 (padrão), tenta recuperar a página salva
+        if (page === 1) {
+            const savedPage = localStorage.getItem('sqlite-studio-current-page');
+            if (savedPage) {
+                page = parseInt(savedPage);
+            }
+        }
+        
         setCurrentPage(page);                                                                                 
         const offset = (page - 1) * pageSize;
-        
-        console.log('📊 Loading table:', {
-            tableName,
-            page,
-            pageSize,
-            offset
-        });
         
         elements.resultsHeader.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading...`;
         
         const sql = `SELECT * FROM ${tableName} LIMIT ${pageSize} OFFSET ${offset}`;
-        console.log('📝 SQL:', sql);
         
         const result = await currentDb.query(sql, []);              
         const rows = result.result?.resultRows || [];
@@ -184,7 +177,10 @@ export async function loadTableData(tableName, page = 1) {
             []               
         );              
         const total = countResult.result?.resultRows[0]?.count || 0;
-        setTotalRows(total);                                                                                  
+        setTotalRows(total);
+        
+        // Salva a página atual no storage
+        localStorage.setItem('sqlite-studio-current-page', page.toString());
         
         if (rows.length === 0) {
             showNoResults();
@@ -254,7 +250,6 @@ export async function runQuery() {
             const { currentTable } = await import('./state.js');
             
             if (currentTable) {
-                console.log('🔄 Reloading table after DML operation:', currentTable);
                 await loadTableData(currentTable, 1);
             }
         }
