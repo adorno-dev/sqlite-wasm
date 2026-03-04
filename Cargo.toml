@@ -7,7 +7,7 @@ authors = ["adorno-dev <adorno.dev@gmail.com>"]
 repository = "https://github.com/adorno-dev/sqlite-wasm"
 license = "MIT"
 readme = "README.md"
-keywords = ["sqlite-wasm", "wasm", "sqlite", "opfs", "database", "webassembly", "worker"]
+keywords = ["sqlite-wasm", "sqlite", "opfs", "database", "worker"]
 categories = ["wasm", "database"]
 exclude = ["/pkg", "/target"]
 
