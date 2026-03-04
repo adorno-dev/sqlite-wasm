@@ -1,3 +1,5 @@
+#//.github/workflows/express.yml
+
 name: Build Express Server
 
 on:
@@ -63,3 +65,23 @@ jobs:
       with:
         name: wasm-package
         path: pkg/
+
+    - name: 📦 Build for GitHub Pages
+      run: |
+        # Cria pasta para deploy
+        mkdir -p deploy
+        # Copia tudo que precisa
+        cp -r static deploy/
+        cp index.html deploy/
+        cp -r pkg deploy/
+        # Garante permissões
+        chmod -R 755 deploy/
+    
+    - name: 🚀 Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./deploy
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
