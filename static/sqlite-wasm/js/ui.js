@@ -3,7 +3,7 @@
 import {
     elements, db, currentDatabase, availableDatabases,
     currentTable, currentPage, pageSize, totalRows, lastResults,
-    setCurrentTable, setCurrentPage
+    setCurrentTable, setCurrentPage, setLastResults, setTotalRows
 } from './state.js';
 import { loadTableData, createNewDatabase } from './database.js';
 import { toggleDeleteButton } from './studio.js'
@@ -110,10 +110,13 @@ export async function switchDatabase(dbName) {
 
     if (dbName === null) {
         setCurrentTable(null);
+        setLastResults([]);
+        setTotalRows(0);
         showNoDatabases();
         updateTreeTables([]);
         updateTreeViews([]);
         updateTreeTriggers([]);
+        updatePagination();
     } else {
         setCurrentTable(null);
         await open(dbName);

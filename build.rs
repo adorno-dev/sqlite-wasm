@@ -29,7 +29,7 @@
 //! 
 //! * In release mode, minifies JavaScript files using `minhtml`:
 //!   - All JavaScript files in the copied directories
-//!   - Including main glue code (`sqlite_wasm.js`)
+//!   - Including main glue code (`sqlite-wasm.js`)
 //!   - SQLite engine files (`sqlite3.js`, worker files, proxy)
 //!   - Service worker files
 //! 

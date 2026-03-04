@@ -328,7 +328,7 @@ function setupEventListeners() {
                 try {
 
                     // Fecha o banco atual primeiro
-                    const { close } = await import('../../../pkg/sqlite_wasm.js');
+                    const { close } = await import('/sqlite-wasm.js');
                     await close();
 
                     // Deleta o arquivo via OPFS
