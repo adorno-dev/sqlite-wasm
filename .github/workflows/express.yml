@@ -6,6 +6,11 @@ on:
   push:
     branches: [ main, development ]
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -55,11 +60,11 @@ jobs:
         cp -r static deploy/
         cp index.html deploy/
         cp -r pkg deploy/
-        ls -la deploy/  # debug: mostra o que foi copiado
+        ls -la deploy/
       
     - name: 🚀 Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v4
       with:
-        deploy_key: ${{ secrets.DEPLOY_TOKEN }}
+        deploy_key: ${{ secrets.DEPLOY_KEY }}
         publish_dir: ./deploy
         force_orphan: true
