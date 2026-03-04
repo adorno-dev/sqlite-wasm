@@ -1,15 +1,13 @@
 #//.github/workflows/express.yml
 
-name: Build Express Server
+name: Build and Deploy
 
 on:
   push:
     branches: [ main, development ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -20,9 +18,8 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'  # Cacheia node_modules
+        cache: 'npm'
     
-    # 🔥 NOVO PASSO: Instala dependências
     - name: 📦 Install Node dependencies
       run: npm install
       
@@ -32,7 +29,7 @@ jobs:
         toolchain: stable
         target: wasm32-unknown-unknown
     
-    - name: ♻️ Cache Cargo
+    - name: ♻ Cache Cargo
       uses: actions/cache@v4
       with:
         path: |
@@ -47,40 +44,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y brotli gzip
       
-    - name: 🔨 Build (release)
+    - name: 🔨 Build
       run: |
         chmod +x ./build
         ./build
       
-    - name: 🚀 Start server
+    - name: 📦 Prepare for deployment
       run: |
-        NODE_ENV=production node webserver.js &
-        sleep 5
-      
-    - name: ✅ Test server
-      run: curl -f http://localhost:8080 || exit 1
-      
-    - name: 📦 Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: wasm-package
-        path: pkg/
-
-    - name: 📦 Build for GitHub Pages
-      run: |
-        # Cria pasta para deploy
         mkdir -p deploy
-        # Copia tudo que precisa
         cp -r static deploy/
         cp index.html deploy/
         cp -r pkg deploy/
-        # Garante permissões
-        chmod -R 755 deploy/
-    
+        ls -la deploy/  # debug: mostra o que foi copiado
+      
     - name: 🚀 Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./deploy
         force_orphan: true
-
