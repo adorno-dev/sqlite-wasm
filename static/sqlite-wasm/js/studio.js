@@ -1,6 +1,7 @@
 // static/js/studio.js
 
-import init from '../../../pkg/sqlite_wasm.js';
+import * as wasm from '../../../pkg/sqlite_wasm.js';
+const { default: init, autostart, open } = wasm;
 import {
     elements, setAvailableDatabases, setDb, setCurrentDatabase,
     setPageSize, setCurrentPage, currentTable, lastResults, pageSize,
