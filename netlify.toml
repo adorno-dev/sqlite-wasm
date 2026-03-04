@@ -48,6 +48,9 @@
   Content-Type = "application/wasm"
   Cache-Control = "public, max-age=31536000, immutable"
 
+[template]
+  name = "sqlite-wasm"
+
 # ===== REDIRECTS PARA ARQUIVOS ESTÁTICOS =====
 [[redirects]]
   from = "/static/*"
