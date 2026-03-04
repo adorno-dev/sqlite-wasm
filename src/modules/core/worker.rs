@@ -1,5 +1,3 @@
-//src/modules/core/worker.rs
-
 //! Web Worker management for SQLite database operations.
 //! 
 //! This module provides a complete system for managing a dedicated Web Worker
@@ -33,8 +31,9 @@
 //! 
 //! # Examples
 //! 
-//! ```rust
-//! use sqlite_wasm::core::worker::{initialize_worker, wait_for_worker, w_msg};
+//! ```no_run
+//! # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+//! use sqlite_wasm::modules::core::worker::{initialize_worker, wait_for_worker, w_msg};
 //! 
 //! // Initialize the worker (idempotent)
 //! initialize_worker("/sqlite.org/sqlite3-worker1.js").await?;
@@ -42,8 +41,11 @@
 //! // Wait for SQLite to be ready
 //! wait_for_worker().await?;
 //! 
-//! // Send a custom message
-//! let response = w_msg("open".to_string(), args).await?;
+//! // Send a custom message (args would be created in a real scenario)
+//! let args = js_sys::Object::new();
+//! let response = w_msg("open".to_string(), args.into()).await?;
+//! # Ok(())
+//! # }
 //! ```
 
 use futures_channel::oneshot;
@@ -90,12 +92,17 @@ static WORKER_READY: Mutex<Option<oneshot::Sender<()>>> = Mutex::new(None);
 /// initialization will return `Ok(())` immediately without creating a new worker.
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::worker::initialize_worker;
+/// 
 /// // Basic initialization
 /// initialize_worker("/sqlite.org/sqlite3-worker1.js").await?;
 /// 
 /// // Can be called multiple times safely
 /// initialize_worker("/sqlite.org/sqlite3-worker1.js").await?; // Returns Ok(()) instantly
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
@@ -177,12 +184,18 @@ fn setup_ready_listener(worker: &Worker) -> Result<(), JsValue> {
 /// the ready signal is received. No busy-waiting or polling is involved.
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::worker::{initialize_worker, wait_for_worker, w_msg};
+/// 
 /// initialize_worker("/sqlite.org/sqlite3-worker1.js").await?;
 /// wait_for_worker().await?; // Waits efficiently
 /// 
 /// // Now safe to send commands
-/// w_msg("open".to_string(), args).await?;
+/// let args = js_sys::Object::new();
+/// w_msg("open".to_string(), args.into()).await?;
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub async fn wait_for_worker() -> Result<(), JsValue> {
@@ -234,14 +247,25 @@ fn get_worker() -> &'static Worker {
 /// 5. Awaits the channel; when the response arrives, the listener is removed.
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::worker::w_msg;
+/// use js_sys::Object;
+/// use wasm_bindgen::JsValue;
+/// 
 /// // Open a database
-/// let open_args = object!({ filename: "mydb.sqlite3", vfs: "opfs" });
-/// let response = w_msg("open".to_string(), open_args).await?;
+/// let open_args = Object::new();
+/// // In real usage, you would set properties on the object:
+/// // js_sys::Reflect::set(&open_args, &"filename".into(), &JsValue::from_str("mydb.sqlite3"))?;
+/// // js_sys::Reflect::set(&open_args, &"vfs".into(), &JsValue::from_str("opfs"))?;
+/// let response = w_msg("open".to_string(), open_args.into()).await?;
 /// 
 /// // Execute a query
-/// let query_args = object!({ sql: "SELECT * FROM users" });
-/// let rows = w_msg("exec".to_string(), query_args).await?;
+/// let query_args = Object::new();
+/// // js_sys::Reflect::set(&query_args, &"sql".into(), &JsValue::from_str("SELECT * FROM users"))?;
+/// let rows = w_msg("exec".to_string(), query_args.into()).await?;
+/// # Ok(())
+/// # }
 /// ```
 pub async fn w_msg(msg_type: String, args: JsValue) -> Result<JsValue, JsValue> {
     let worker = get_worker();

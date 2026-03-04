@@ -1,5 +1,3 @@
-//src/lib.rs
-
 //! # sqlite-wasm
 //! 
 //! A high-performance SQLite wrapper for WebAssembly with OPFS support.
@@ -26,30 +24,29 @@
 //! 
 //! ## Quick Start
 //! 
-//! ```rust
-//! use sqlite_wasm::{autostart, open};
+//! ```no_run
+//! # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+//! use sqlite_wasm::{autostart, open, WasmApi};
 //! 
-//! #[wasm_bindgen]
-//! pub async fn main() -> Result<(), JsValue> {
-//!     // One-line initialization (worker only)
-//!     let db = autostart("/sqlite.org/sqlite3-worker1.js").await?;
+//! // One-line initialization (worker only)
+//! let db: WasmApi = autostart("/sqlite.org/sqlite3-worker1.js").await?;
 //!     
-//!     // Open specific database
-//!     open("myapp.sqlite3").await?;
+//! // Open specific database
+//! open("myapp.sqlite3").await?;
 //!     
-//!     // Create table
-//!     db.exec("CREATE TABLE users (id INTEGER, name TEXT)", vec![]).await?;
+//! // Create table
+//! db.exec("CREATE TABLE users (id INTEGER, name TEXT)", vec![]).await?;
 //!     
-//!     // Insert data
-//!     db.exec(
-//!         "INSERT INTO users VALUES (?, ?)",
-//!         vec![1.into(), "Alice".into()]
-//!     ).await?;
+//! // Insert data
+//! db.exec(
+//!     "INSERT INTO users VALUES (?, ?)",
+//!     vec![1.into(), "Alice".into()]
+//! ).await?;
 //!     
-//!     // Query data
-//!     let result = db.query("SELECT * FROM users", vec![]).await?;
-//!     Ok(())
-//! }
+//! // Query data
+//! let result = db.query("SELECT * FROM users", vec![]).await?;
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod modules;
@@ -84,19 +81,24 @@ pub use bindings::{initialize_bindings, WasmApi};
 /// 
 /// # Examples
 /// 
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::{autostart, open, WasmApi};
+/// 
 /// // Rust usage - initialize worker
-/// let db = autostart("/sqlite.org/sqlite3-worker1.js").await?;
+/// let db: WasmApi = autostart("/sqlite.org/sqlite3-worker1.js").await?;
 /// 
 /// // Open a database (separate step)
 /// open("app.sqlite3").await?;
 /// 
 /// // Now execute queries
 /// db.exec("CREATE TABLE users (id INTEGER)", vec![]).await?;
+/// # Ok(())
+/// # }
 /// ```
 /// 
 /// ```javascript
-/// // JavaScript usage
+/// // JavaScript usage (after initialization)
 /// await wasm.initializeWorker("/sqlite.org/sqlite3-worker1.js");
 /// await wasm.open("app.sqlite3");
 /// await wasm.exec("CREATE TABLE users (id INTEGER)", []);

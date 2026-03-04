@@ -43,5 +43,6 @@ lto = false                # Disable LTO for faster builds
 codegen-units = 16         # Parallel compilation for speed
 
 [package.metadata.docs.rs]
-all-features = true        # Document all features
-rustdoc-args = ["--cfg", "docsrs"]  # Mark as docs.rs documentation
+features = ["docs"]  # enable this feature when generating docs
+rustdoc-args = ["--cfg", "docsrs"]  # marks items as unstable/nightly on docs.rs
+targets = ["wasm32-unknown-unknown"]  # focus on WASM target for documentation

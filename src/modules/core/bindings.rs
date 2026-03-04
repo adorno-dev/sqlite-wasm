@@ -1,5 +1,3 @@
-//src/modules/core/bindings.rs
-
 //! JavaScript bindings and global API exposure.
 //! 
 //! This module handles the creation of a convenient JavaScript API surface
@@ -23,6 +21,7 @@
 //! After calling `initialize_bindings()`, the following becomes available:
 //! 
 //! ```javascript
+//! // This is JavaScript code, not Rust
 //! window.wasm = {
 //!   initializeWorker: (path) => {...},  // Calls initialize_worker
 //!   open: (dbName) => {...},            // Calls open
@@ -40,14 +39,17 @@
 //! 
 //! # Examples
 //! 
-//! ```rust
+//! ```no_run
+//! # async fn example() -> Result<(), wasm_bindgen::JsValue> {
 //! // Rust usage
-//! let api = get_api();
+//! let api = sqlite_wasm::modules::core::bindings::get_api();
 //! let result = api.exec("CREATE TABLE users (id INTEGER)", vec![]).await?;
+//! # Ok(())
+//! # }
 //! ```
 //! 
 //! ```javascript
-//! // JavaScript usage
+//! // JavaScript usage (after calling initialize_bindings from Rust)
 //! await wasm.initializeWorker("/sqlite.org/sqlite3-worker1.js");
 //! await wasm.open("app.sqlite3");
 //! await wasm.exec("CREATE TABLE users (id INTEGER, name TEXT)", []);
@@ -71,10 +73,13 @@ use wasm_bindgen::prelude::*;
 /// 
 /// # Examples
 /// 
-/// ```rust
-/// let api = get_api();
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// let api = sqlite_wasm::modules::core::bindings::get_api();
 /// api.exec("INSERT INTO users (name) VALUES (?)", vec!["Alice".into()]).await?;
 /// let rows = api.query("SELECT * FROM users", vec![]).await?;
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub struct WasmApi;
@@ -83,7 +88,7 @@ pub struct WasmApi;
 impl WasmApi {
     /// Executes a SQL statement without returning rows.
     /// 
-    /// This method delegates to `crate::database::exec()`.
+    /// This method delegates to `crate::modules::core::database::exec()`.
     /// 
     /// # Arguments
     /// * `sql` - SQL statement to execute
@@ -93,12 +98,12 @@ impl WasmApi {
     /// * `Ok(JsValue)` - Execution result from the database module
     /// * `Err(JsValue)` - Error from the database module
     pub async fn exec(&self, sql: &str, bind: Vec<JsValue>) -> Result<JsValue, JsValue> {
-        crate::database::exec(sql, bind).await
+        crate::modules::core::database::exec(sql, bind).await
     }
 
     /// Executes a SQL query and returns rows.
     /// 
-    /// This method delegates to `crate::database::query()`.
+    /// This method delegates to `crate::modules::core::database::query()`.
     /// 
     /// # Arguments
     /// * `sql` - SELECT statement to execute
@@ -108,7 +113,7 @@ impl WasmApi {
     /// * `Ok(JsValue)` - Query results (typically containing `resultRows`)
     /// * `Err(JsValue)` - Error from the database module
     pub async fn query(&self, sql: &str, bind: Vec<JsValue>) -> Result<JsValue, JsValue> {
-        crate::database::query(sql, bind).await
+        crate::modules::core::database::query(sql, bind).await
     }
 }
 

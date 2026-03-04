@@ -1,5 +1,3 @@
-//src/modules.rs
-
 //! Module organization for the SQLite WASM crate.
 //! 
 //! This module serves as the root of the module hierarchy, re-exporting
@@ -17,7 +15,7 @@
 //! Internal imports within the crate should use this module hierarchy:
 //! 
 //! ```rust
-//! use crate::modules::core::{worker, database, bindings};
+//! use sqlite_wasm::modules::core::{worker, database, bindings};
 //! ```
 //! 
 //! External users should import directly from the crate root:

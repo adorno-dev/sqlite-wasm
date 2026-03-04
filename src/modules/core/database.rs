@@ -1,5 +1,3 @@
-//src/modules/core/database.rs
-
 //! Core database operations for SQLite in the browser.
 //! 
 //! This module provides the main API for interacting with SQLite databases
@@ -29,8 +27,9 @@
 //! 
 //! # Examples
 //! 
-//! ```rust
-//! use sqlite_wasm::core::database::{open, exec, query, close};
+//! ```no_run
+//! # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+//! use sqlite_wasm::modules::core::database::{open, exec, query, close};
 //! 
 //! // Open database
 //! open("mydb.sqlite3").await?;
@@ -46,13 +45,15 @@
 //! 
 //! // Close when done
 //! close().await?;
+//! # Ok(())
+//! # }
 //! ```
 
 use std::sync::{Mutex, atomic::{AtomicU32, Ordering}};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 use js_sys::{Object, Array, Reflect};
 
-use crate::worker::w_msg;
+use crate::modules::core::worker::w_msg;
 
 /// Global database ID (singleton).
 /// 
@@ -100,12 +101,17 @@ static COUNTER: AtomicU32 = AtomicU32::new(0);
 /// * Requires COOP/COEP headers to be set
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::database::open;
+/// 
 /// // Simple open
 /// open("app.sqlite3").await?;
 /// 
 /// // Subsequent calls are no-ops
 /// open("app.sqlite3").await?; // Ok(()) immediately
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub async fn open(database_name: &str) -> Result<(), JsValue> {
@@ -151,10 +157,15 @@ pub async fn open(database_name: &str) -> Result<(), JsValue> {
 /// * After closing, the database file remains on disk and can be re-opened.
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::database::{open, close};
+/// 
 /// open("app.sqlite3").await?;
 /// // ... do work ...
 /// close().await?;
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub async fn close() -> Result<(), JsValue> {
@@ -193,7 +204,12 @@ pub async fn close() -> Result<(), JsValue> {
 /// must contain one value per placeholder, in order.
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::database::{open, exec};
+/// 
+/// open("app.sqlite3").await?;
+/// 
 /// // Create table
 /// exec("CREATE TABLE users (id INTEGER, name TEXT)", vec![]).await?;
 /// 
@@ -211,6 +227,8 @@ pub async fn close() -> Result<(), JsValue> {
 /// 
 /// // Delete
 /// exec("DELETE FROM users WHERE id = ?", vec![1.into()]).await?;
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
@@ -262,7 +280,13 @@ pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
 /// To change this, you can modify the `rowMode` property in the message object.
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+/// use sqlite_wasm::modules::core::database::{open, query};
+/// use js_sys::{Array, Reflect};
+/// 
+/// open("app.sqlite3").await?;
+/// 
 /// // Simple query
 /// let result = query("SELECT * FROM users", vec![]).await?;
 /// 
@@ -280,6 +304,8 @@ pub async fn exec(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
 ///         let name = js_sys::Reflect::get(&row, &"name".into())?;
 ///     }
 /// }
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub async fn query(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
@@ -314,12 +340,17 @@ pub async fn query(sql: &str, args: Vec<JsValue>) -> Result<JsValue, JsValue> {
 ///
 /// # Examples
 /// ```rust
+/// use sqlite_wasm::modules::core::database::{open, is_open, query};
+/// 
+/// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
 /// if is_open() {
 ///     // Safe to execute queries
 ///     let result = query("SELECT * FROM users", vec![]).await?;
 /// } else {
 ///     open("app.sqlite3").await?;
 /// }
+/// # Ok(())
+/// # }
 /// ```
 #[wasm_bindgen]
 pub fn is_open() -> bool {

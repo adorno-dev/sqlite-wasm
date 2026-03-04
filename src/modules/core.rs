@@ -1,5 +1,3 @@
-//src/modules/core.rs
-
 //! Core database functionality for SQLite in the browser.
 //! 
 //! This module aggregates all the core components needed for SQLite
@@ -48,8 +46,9 @@
 //! 
 //! Internal imports within the crate should use:
 //! 
-//! ```rust
-//! use crate::modules::core::{worker, database, bindings};
+//! ```no_run
+//! # async fn example() -> Result<(), wasm_bindgen::JsValue> {
+//! use sqlite_wasm::modules::core::{worker, database, bindings};
 //! 
 //! // Worker operations
 //! worker::initialize_worker("/worker.js").await?;
@@ -62,6 +61,8 @@
 //! // Bindings (usually handled by autostart)
 //! bindings::initialize_bindings();
 //! let api = bindings::get_api();
+//! # Ok(())
+//! # }
 //! ```
 
 pub mod worker;
