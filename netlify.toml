@@ -1,5 +1,12 @@
 [build]
-  command = "trunk build --release"
+  command = """
+    # Instala o trunk se não existir
+    cargo install trunk || true && \
+    # Garante que o target wasm está disponível
+    rustup target add wasm32-unknown-unknown && \
+    # Executa o build
+    trunk build --release
+  """
   publish = "dist"
 
 [[headers]]
