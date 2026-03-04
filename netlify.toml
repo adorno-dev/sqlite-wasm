@@ -1,0 +1,16 @@
+[build]
+  command = "trunk build --release"
+  publish = "dist"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+  Cross-Origin-Opener-Policy = "same-origin"
+  Cross-Origin-Embedder-Policy = "require-corp"
+  Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "*.wasm"
+  [headers.values]
+  Content-Type = "application/wasm"
+  Cache-Control = "public, max-age=31536000, immutable"
