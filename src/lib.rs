@@ -126,8 +126,9 @@ pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
     // let assets = crate::modules::core::blob::EmbeddedAssets::new()?;
     // worker::initialize_worker(assets.worker_url()).await?;
 
-    let blob_url: String = sqlite_worker_path()?;
-    worker::initialize_worker(&blob_url).await?;
+    // let blob_url: String = sqlite_worker_path()?;
+    let path = "/static/sqlite.org/sqlite3-worker1.js";
+    worker::initialize_worker(path).await?;
     worker::wait_for_worker().await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())
