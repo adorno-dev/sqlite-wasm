@@ -14,11 +14,17 @@ const SQLITE_OPFS: &str =
 const SQLITE_WASM: &[u8] =
     include_bytes!("../../../static/sqlite.org/sqlite3.wasm");
 
+use web_sys::BlobPropertyBag;
+
 fn blob_url(code: &str) -> Result<String, JsValue> {
     let parts = Array::new();
     parts.push(&JsValue::from_str(code));
 
-    let blob = Blob::new_with_str_sequence(&parts)?;
+    let mut opts = BlobPropertyBag::new();
+    opts.set_type("text/javascript");
+
+    let blob = Blob::new_with_str_sequence_and_options(&parts, &opts)?;
+
     Url::create_object_url_with_blob(&blob)
 }
 
@@ -28,7 +34,11 @@ fn blob_url_bytes(bytes: &[u8]) -> Result<String, JsValue> {
     let parts = Array::new();
     parts.push(&arr);
 
-    let blob = Blob::new_with_u8_array_sequence(&parts)?;
+    let mut opts = BlobPropertyBag::new();
+    opts.set_type("application/wasm");
+
+    let blob = Blob::new_with_u8_array_sequence_and_options(&parts, &opts)?;
+
     Url::create_object_url_with_blob(&blob)
 }
 
