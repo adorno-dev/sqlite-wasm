@@ -1,33 +1,33 @@
 //! # sqlite-wasm
-//! 
+//!
 //! A high-performance SQLite wrapper for WebAssembly with OPFS support.
 //! This crate provides a clean, type-safe API for using SQLite in the browser
 //! through a dedicated Web Worker, with full support for persistent storage
 //! using the Origin Private File System (OPFS).
-//! 
+//!
 //! ## Features
-//! 
+//!
 //! * **Zero-cost abstractions** - Worker management with `OnceLock` and atomic counters
 //! * **OPFS persistence** - Databases survive page reloads and browser restarts
 //! * **Async/await API** - All operations return Promises/futures
 //! * **Automatic worker management** - Singleton worker with ready-state signaling
 //! * **No manual sleeps** - Proper event-based waiting for initialization
 //! * **JavaScript bindings** - Global `window.wasm` object with camelCase methods
-//! 
+//!
 //! ## Architecture
-//! 
+//!
 //! The crate is organized into three core modules:
-//! 
+//!
 //! * **`worker`** - Web Worker lifecycle and message passing
 //! * **`database`** - SQLite operations (open, exec, query, close)
 //! * **`bindings`** - JavaScript API exposure and type-safe Rust wrapper
-//! 
+//!
 //! ## Quick Start
-//! 
+//!
 //! ```no_run
 //! # async fn example() -> Result<(), wasm_bindgen::JsValue> {
 //! use sqlite_wasm::{autostart, open, WasmApi};
-//! 
+//!
 //! // One-line initialization (worker only)
 //! let db: WasmApi = autostart("/sqlite.org/sqlite3-worker1.js").await?;
 //!     
@@ -51,53 +51,52 @@
 
 pub mod modules;
 
-use crate::modules::core::{worker, database, bindings};
+use crate::modules::core::{bindings, database, worker};
 
-pub use worker::{initialize_worker, wait_for_worker};
+pub use bindings::{WasmApi, initialize_bindings};
 pub use database::{close, db_id, exec, is_open, open, query};
-pub use bindings::{initialize_bindings, WasmApi};
-
+pub use worker::{initialize_worker, wait_for_worker};
 
 /// One-stop initialization: creates worker, waits for ready, exposes bindings
-/// 
+///
 /// This is the recommended way to initialize the SQLite WASM system. It performs
 /// all necessary steps in the correct order:
-/// 
+///
 /// 1. Creates the Web Worker
 /// 2. Waits for the worker to be ready (receives 'worker1-ready' message)
 /// 3. Exposes the global `window.wasm` object with camelCase methods
-/// 
+///
 /// # Arguments
 /// * `worker_path` - Path to the SQLite worker script.
 ///   Typically this points to the official SQLite worker, e.g.:
 ///   - `"/sqlite.org/sqlite3-worker1.js"`
 ///   - `"/static/sqlite3-worker1.js"`
-/// 
+///
 /// # Returns
 /// * `Ok(WasmApi)` - A type-safe Rust wrapper with `exec` and `query` methods.
 ///   The same API is also available globally as `window.wasm` in JavaScript.
-/// 
+///
 /// * `Err(JsValue)` - Initialization failed at any step. The error value
 ///   contains details about which step failed.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```no_run
 /// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
 /// use sqlite_wasm::{autostart, open, WasmApi};
-/// 
+///
 /// // Rust usage - initialize worker
 /// let db: WasmApi = autostart("/sqlite.org/sqlite3-worker1.js").await?;
-/// 
+///
 /// // Open a database (separate step)
 /// open("app.sqlite3").await?;
-/// 
+///
 /// // Now execute queries
 /// db.exec("CREATE TABLE users (id INTEGER)", vec![]).await?;
 /// # Ok(())
 /// # }
 /// ```
-/// 
+///
 /// ```javascript
 /// // JavaScript usage (after initialization)
 /// await wasm.initializeWorker("/sqlite.org/sqlite3-worker1.js");
@@ -105,11 +104,11 @@ pub use bindings::{initialize_bindings, WasmApi};
 /// await wasm.exec("CREATE TABLE users (id INTEGER)", []);
 /// const users = await wasm.query("SELECT * FROM users", []);
 /// ```
-/// 
+///
 /// # Idempotency
 /// The worker is a singleton. Subsequent calls to `autostart`
 /// will return `Ok(WasmApi)` immediately after the first successful initialization.
-/// 
+///
 /// # Performance
 /// This function uses event-based waiting rather than polling or sleeps,
 /// ensuring optimal performance. The overhead after initialization is zero.
@@ -123,9 +122,62 @@ pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsVal
 
 #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostartEmbedded")]
 pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
-    let assets = crate::modules::core::blob::EmbeddedAssets::new()?;
-    worker::initialize_worker(assets.worker_url()).await?;
+    // let assets = crate::modules::core::blob::EmbeddedAssets::new()?;
+    // worker::initialize_worker(assets.worker_url()).await?;
+
+    let worker = sqlite_worker_blob()?;
+    worker::initialize_worker(&worker).await?;
     worker::wait_for_worker().await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())
+}
+
+const SQLITE_WORKER: &str = include_str!("../static/sqlite.org/sqlite3-worker1.js");
+const SQLITE_JS: &str = include_str!("../static/sqlite.org/sqlite3.js");
+const SQLITE_OPFS: &str = include_str!("../static/sqlite.org/sqlite3-opfs-async-proxy.js");
+const SQLITE_WASM: &[u8] = include_bytes!("../static/sqlite.org/sqlite3.wasm");
+
+use js_sys::{Array, Uint8Array};
+use wasm_bindgen::prelude::*;
+use web_sys::{Blob, Url};
+
+fn blob_url(code: &str) -> Result<String, JsValue> {
+    let parts = Array::new();
+    parts.push(&JsValue::from_str(code));
+
+    let blob = Blob::new_with_str_sequence(&parts)?;
+    Url::create_object_url_with_blob(&blob)
+}
+
+fn blob_url_bytes(bytes: &[u8]) -> Result<String, JsValue> {
+    let array = Uint8Array::from(bytes);
+
+    let parts = Array::new();
+    parts.push(&array);
+
+    let blob = Blob::new_with_u8_array_sequence(&parts)?;
+    Url::create_object_url_with_blob(&blob)
+}
+
+#[wasm_bindgen]
+pub fn sqlite_worker_blob() -> Result<String, JsValue> {
+    let sqlite_js = blob_url(SQLITE_JS)?;
+    let opfs_js = blob_url(SQLITE_OPFS)?;
+    let wasm_url = blob_url_bytes(SQLITE_WASM)?;
+
+    let worker_code = format!(
+        r#"
+        self.SQLITE_WASM_URL = "{wasm}";
+        self.SQLITE_JS_URL = "{sqlite}";
+        self.OPFS_PROXY_URL = "{opfs}";
+
+        import("{worker}");
+    "#,
+        wasm = wasm_url,
+        sqlite = sqlite_js,
+        opfs = opfs_js,
+        worker = blob_url(SQLITE_WORKER)?
+    );
+
+    blob_url(&worker_code)
 }
