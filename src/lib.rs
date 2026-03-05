@@ -51,7 +51,7 @@
 
 pub mod modules;
 
-use crate::modules::core::{bindings, database, worker};
+use crate::modules::core::{bindings, database, sqlite_blob, worker};
 
 pub use bindings::{WasmApi, initialize_bindings};
 pub use database::{close, db_id, exec, is_open, open, query};
@@ -120,64 +120,15 @@ pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsVal
     Ok(bindings::get_api())
 }
 
+pub use sqlite_blob::sqlite_worker_path;
 #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostartEmbedded")]
 pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
     // let assets = crate::modules::core::blob::EmbeddedAssets::new()?;
     // worker::initialize_worker(assets.worker_url()).await?;
 
-    let worker = sqlite_worker_blob()?;
-    worker::initialize_worker(&worker).await?;
+    let blob_url: String = sqlite_worker_path()?;
+    worker::initialize_worker(&blob_url).await?;
     worker::wait_for_worker().await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())
-}
-
-const SQLITE_WORKER: &str = include_str!("../static/sqlite.org/sqlite3-worker1.js");
-const SQLITE_JS: &str = include_str!("../static/sqlite.org/sqlite3.js");
-const SQLITE_OPFS: &str = include_str!("../static/sqlite.org/sqlite3-opfs-async-proxy.js");
-const SQLITE_WASM: &[u8] = include_bytes!("../static/sqlite.org/sqlite3.wasm");
-
-use js_sys::{Array, Uint8Array};
-use wasm_bindgen::prelude::*;
-use web_sys::{Blob, Url};
-
-fn blob_url(code: &str) -> Result<String, JsValue> {
-    let parts = Array::new();
-    parts.push(&JsValue::from_str(code));
-
-    let blob = Blob::new_with_str_sequence(&parts)?;
-    Url::create_object_url_with_blob(&blob)
-}
-
-fn blob_url_bytes(bytes: &[u8]) -> Result<String, JsValue> {
-    let array = Uint8Array::from(bytes);
-
-    let parts = Array::new();
-    parts.push(&array);
-
-    let blob = Blob::new_with_u8_array_sequence(&parts)?;
-    Url::create_object_url_with_blob(&blob)
-}
-
-#[wasm_bindgen]
-pub fn sqlite_worker_blob() -> Result<String, JsValue> {
-    let sqlite_js = blob_url(SQLITE_JS)?;
-    let opfs_js = blob_url(SQLITE_OPFS)?;
-    let wasm_url = blob_url_bytes(SQLITE_WASM)?;
-
-    let worker_code = format!(
-        r#"
-        self.SQLITE_WASM_URL = "{wasm}";
-        self.SQLITE_JS_URL = "{sqlite}";
-        self.OPFS_PROXY_URL = "{opfs}";
-
-        import("{worker}");
-    "#,
-        wasm = wasm_url,
-        sqlite = sqlite_js,
-        opfs = opfs_js,
-        worker = blob_url(SQLITE_WORKER)?
-    );
-
-    blob_url(&worker_code)
 }
