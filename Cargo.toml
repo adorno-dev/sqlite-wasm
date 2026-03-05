@@ -1,7 +1,7 @@
 [package]
 name = "sqlite-wasm"
 description = "A high-performance SQLite wrapper for WebAssembly with OPFS support"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["adorno-dev <adorno.dev@gmail.com>"]
 repository = "https://github.com/adorno-dev/sqlite-wasm"
@@ -24,6 +24,8 @@ web-sys = { version = "0.3", features = [
     "Worker", 
     "MessageEvent", 
     "Window",
+    "Blob",
+    "Url",
     "console"
 ]}
 

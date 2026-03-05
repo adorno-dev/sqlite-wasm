@@ -57,6 +57,7 @@ pub use worker::{initialize_worker, wait_for_worker};
 pub use database::{close, db_id, exec, is_open, open, query};
 pub use bindings::{initialize_bindings, WasmApi};
 
+
 /// One-stop initialization: creates worker, waits for ready, exposes bindings
 /// 
 /// This is the recommended way to initialize the SQLite WASM system. It performs
@@ -115,6 +116,15 @@ pub use bindings::{initialize_bindings, WasmApi};
 #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart")]
 pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsValue> {
     worker::initialize_worker(worker_path).await?;
+    worker::wait_for_worker().await?;
+    bindings::initialize_bindings();
+    Ok(bindings::get_api())
+}
+
+#[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostartEmbedded")]
+pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
+    let assets = crate::modules::core::blob::EmbeddedAssets::new()?;
+    worker::initialize_worker(assets.worker_url()).await?;
     worker::wait_for_worker().await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())

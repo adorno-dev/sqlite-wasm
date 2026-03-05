@@ -68,3 +68,4 @@
 pub mod worker;
 pub mod database;
 pub mod bindings;
+pub mod blob;
