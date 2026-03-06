@@ -84,20 +84,24 @@ trunk build --release
 
 --------------------------------------------------------------------
 
-📋 API Reference
+📋 API REFERENCE
 ====================================================================
 
-Function              Description
---------------------------------------------------------------------
-autostart_embedded()  Initializes worker with embedded files
-autostart(path)       Legacy: initializes with external file
-open(name)            Opens or creates a database
-exec(sql, params)     Executes SQL without returning rows
-query(sql, params)    Executes SELECT and returns rows
-close()               Closes the current database
-is_open()             Checks if a database is open
+autostart_embedded() → Initializes worker with embedded files
 
---------------------------------------------------------------------
+autostart(path) → Legacy: initializes with external file
+
+open(name) → Opens or creates a database
+
+exec(sql, params) → Executes SQL without returning rows
+
+query(sql, params) → Executes SELECT and returns rows
+
+close() → Closes the current database
+
+is_open() → Checks if a database is open
+
+====================================================================
 
 🦀 Rust Usage
 ====================================================================

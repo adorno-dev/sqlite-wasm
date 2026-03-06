@@ -1,11 +1,218 @@
 #!/bin/bash
-echo "🚀 Building release..."
+
+# CONFIGURAÇÕES
+PORT=8080
+SERVER_ENABLED=true  # Mude para false se não quiser iniciar servidor
+
+echo "🚀 Starting optimization pipeline..."
+
+# ==================== MINIFY SQLITE SOURCES (TEMPORARY) ====================
+echo "✂️ Creating minified copies of SQLite files..."
+
+# Cria pasta temporária
+mkdir -p tmp_minified
+
+# Minifica com terser (usa node_modules local)
+TERSER="./node_modules/.bin/terser"
+
+# Verifica se terser existe
+if [ ! -f "$TERSER" ]; then
+    echo "📦 Installing terser locally..."
+    npm install terser
+fi
+
+# Minifica os arquivos SQLite
+$TERSER static/sqlite.org/sqlite3.js -o tmp_minified/sqlite3.js --compress --mangle
+$TERSER static/sqlite.org/sqlite3-worker1.js -o tmp_minified/sqlite3-worker1.js --compress --mangle
+$TERSER static/sqlite.org/sqlite3-opfs-async-proxy.js -o tmp_minified/sqlite3-opfs-async-proxy.js --compress --mangle
+
+# Backup dos originais
+cp static/sqlite.org/sqlite3.js static/sqlite.org/sqlite3.js.bak
+cp static/sqlite.org/sqlite3-worker1.js static/sqlite.org/sqlite3-worker1.js.bak
+cp static/sqlite.org/sqlite3-opfs-async-proxy.js static/sqlite.org/sqlite3-opfs-async-proxy.js.bak
+
+# Substitui pelos minificados (SÓ PARA O BUILD)
+cp tmp_minified/* static/sqlite.org/
+
+# Mostra redução de tamanho
+echo "📊 SQLite files size reduction:"
+ls -lh static/sqlite.org/sqlite3.js | awk '{printf "  sqlite3.js: %s\n", $5}'
+ls -lh static/sqlite.org/sqlite3-worker1.js | awk '{printf "  sqlite3-worker1.js: %s\n", $5}'
+ls -lh static/sqlite.org/sqlite3-opfs-async-proxy.js | awk '{printf "  sqlite3-opfs-async-proxy.js: %s\n", $5}'
+
+# ==================== BUILD ====================
+echo "📦 Building with Trunk..."
 trunk build --release
 
-echo "Copying files..."
+# ==================== RESTORE ORIGINALS ====================
+echo "♻️ Restoring original SQLite files..."
+mv static/sqlite.org/sqlite3.js.bak static/sqlite.org/sqlite3.js
+mv static/sqlite.org/sqlite3-worker1.js.bak static/sqlite.org/sqlite3-worker1.js
+mv static/sqlite.org/sqlite3-opfs-async-proxy.js.bak static/sqlite.org/sqlite3-opfs-async-proxy.js
+
+# Limpa temporários
+rm -rf tmp_minified
+
+# ==================== ASSETS ====================
+echo "📋 Copying extra files..."
 cp _headers dist/_headers
 
-echo "🧹 Limpando variáveis do Trunk..."
+# ==================== NODE_MODULES LOCAL ====================
+echo "📦 Setting up local node_modules..."
+if [ ! -d "node_modules" ]; then
+    npm install terser clean-css-cli html-minifier compression
+fi
+
+# ==================== USAR NODE_MODULES LOCAL ====================
+TERSER="./node_modules/.bin/terser"
+CLEANCSS="./node_modules/.bin/cleancss"
+HTML_MINIFIER="./node_modules/.bin/html-minifier"
+
+# ==================== MINIFICATION WITH TERSER ====================
+echo "🔥 Minifying JavaScript files with Terser..."
+
+find dist -name "*.js" -type f | while read file; do
+    if [ -f "$file" ]; then
+        original_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
+        $TERSER "$file" -o "$file" --compress --mangle 2>/dev/null
+        new_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
+        saved=$((original_size - new_size))
+        percent=$(echo "scale=1; $saved * 100 / $original_size" | bc 2>/dev/null || echo "0")
+        printf "   ✅ %-40s %'8d → %'8d bytes (%.1f%% smaller)\n" "$(basename $file)" "$original_size" "$new_size" "$percent"
+    fi
+done
+
+# ==================== CSS MINIFICATION ====================
+echo "🎨 Minifying CSS files..."
+
+find dist -name "*.css" -type f | while read file; do
+    if [ -f "$file" ]; then
+        original_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
+        $CLEANCSS -o "$file" "$file" 2>/dev/null
+        new_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
+        printf "   ✅ %-40s %'8d → %'8d bytes\n" "$(basename $file)" "$original_size" "$new_size"
+    fi
+done
+
+# ==================== HTML MINIFICATION ====================
+echo "🌐 Minifying HTML..."
+
+if [ -f "dist/index.html" ]; then
+    original_size=$(stat -c%s "dist/index.html" 2>/dev/null || stat -f%z "dist/index.html" 2>/dev/null)
+    $HTML_MINIFIER --collapse-whitespace --remove-comments --minify-js true --minify-css true -o dist/index.html.tmp dist/index.html
+    mv dist/index.html.tmp dist/index.html
+    new_size=$(stat -c%s "dist/index.html" 2>/dev/null || stat -f%z "dist/index.html" 2>/dev/null)
+    printf "   ✅ %-40s %'8d → %'8d bytes\n" "index.html" "$original_size" "$new_size"
+fi
+
+# ==================== WASM COMPRESSION ====================
+echo "🔒 Compressing WASM files..."
+
+if command -v brotli &> /dev/null; then
+    find dist -name "*.wasm" -type f -exec brotli -q 11 -f -k {} \;
+    echo "   ✅ Brotli compression complete"
+fi
+
+if command -v gzip &> /dev/null; then
+    find dist -name "*.wasm" -type f -exec gzip -9 -f -k {} \;
+    echo "   ✅ Gzip compression complete"
+fi
+
+# ==================== CREATE EXPRESS SERVER ====================
+echo "📝 Creating Express server with compression and headers..."
+
+cat > dist/server.js << 'EOF'
+const express = require('express');
+const compression = require('compression');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+// Enable compression (gzip/brotli)
+app.use(compression());
+
+// COOP/COEP headers
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    next();
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname)));
+
+// SPA fallback (if needed)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
+    console.log(`🔒 COOP/COEP headers enabled`);
+    console.log(`📦 Compression: gzip/brotli enabled`);
+});
+EOF
+
+# ==================== CREATE PACKAGE.JSON FOR SERVER ====================
+cat > dist/package.json << 'EOF'
+{
+  "name": "sqlite-wasm-server",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.18.2",
+    "compression": "^1.7.4"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
+EOF
+
+# ==================== TRUNK CLEANUP ====================
+echo "🧹 Cleaning Trunk variables..."
 sed -i 's/{{__trunk_address__}}//g; s/{{__trunk_ws_base__}}//g' dist/index.html
 
-echo "✅ Build finalizado! Pronto para subir pro Cloudflare."
+# ==================== INSTALL SERVER DEPENDENCIES ====================
+echo "📦 Installing server dependencies..."
+cd dist && npm install
+cd ..
+
+# ==================== FINAL REPORT ====================
+echo ""
+echo "📊 OPTIMIZATION SUMMARY"
+echo "================================================================================"
+
+# Mostra os principais arquivos com tamanhos
+echo "  Main files:"
+ls -lh dist/sqlite-wasm.js 2>/dev/null | awk '{printf "    sqlite-wasm.js: %s\n", $5}'
+ls -lh dist/sqlite-wasm_bg.wasm 2>/dev/null | awk '{printf "    sqlite-wasm_bg.wasm: %s\n", $5}'
+ls -lh dist/sqlite-wasm_bg.wasm.gz 2>/dev/null | awk '{printf "    sqlite-wasm_bg.wasm.gz: %s\n", $5}'
+ls -lh dist/sqlite-wasm_bg.wasm.br 2>/dev/null | awk '{printf "    sqlite-wasm_bg.wasm.br: %s\n", $5}'
+
+echo ""
+echo "  Frontend JS:"
+ls -lh dist/static/sqlite-wasm/js/*.js 2>/dev/null | awk '{printf "    %s: %s\n", $9, $5}'
+
+echo ""
+echo "  SQLite files (now minified in blobs):"
+ls -lh static/sqlite.org/sqlite3.js | awk '{printf "    original sqlite3.js: %s (restored)\n", $5}'
+ls -lh tmp_minified/sqlite3.js 2>/dev/null | awk '{printf "    minified sqlite3.js: %s (used in build)\n", $5}'
+
+echo "================================================================================"
+echo ""
+echo "✅ Build complete! Ready to deploy to Cloudflare."
+echo ""
+
+# ==================== START SERVER (OPTIONAL) ====================
+if [ "$SERVER_ENABLED" = true ]; then
+    echo "🌐 Starting Express server with compression and headers..."
+    echo "   Press Ctrl+C to stop"
+    echo ""
+    cd dist && node server.js
+else
+    echo "🌐 Server not started (SERVER_ENABLED=$SERVER_ENABLED)"
+    echo "   To start manually: cd dist && node server.js"
+fi

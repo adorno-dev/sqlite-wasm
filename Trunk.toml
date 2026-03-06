@@ -6,6 +6,7 @@ release = true
 filehash = false
 no_sri = true
 # public-url = "/"
+minify = "never"
 
 [serve]
 addresses = ["0.0.0.0"]
@@ -30,3 +31,5 @@ destination = "static"
 "static/sqlite.org/sqlite3-worker1.js" = "static/sqlite.org/sqlite3-worker1.js"
 "static/sqlite.org/sqlite3.wasm" = "static/sqlite.org/sqlite3.wasm"
 "static/sqlite.org/sqlite3-opfs-async-proxy.js" = "static/sqlite.org/sqlite3-opfs-async-proxy.js"
+
+
