@@ -24,3 +24,9 @@ Cross-Origin-Embedder-Policy = "require-corp"
 [copy]
 source = "static"
 destination = "static"
+
+[build.files]
+"static/sqlite.org/sqlite3.js" = "static/sqlite.org/sqlite3.js"
+"static/sqlite.org/sqlite3-worker1.js" = "static/sqlite.org/sqlite3-worker1.js"
+"static/sqlite.org/sqlite3.wasm" = "static/sqlite.org/sqlite3.wasm"
+"static/sqlite.org/sqlite3-opfs-async-proxy.js" = "static/sqlite.org/sqlite3-opfs-async-proxy.js"

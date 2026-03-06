@@ -66,6 +66,14 @@ static WORKER: OnceLock<Worker> = OnceLock::new();
 // Channel to signal when worker is ready
 static WORKER_READY: Mutex<Option<oneshot::Sender<()>>> = Mutex::new(None);
 
+// worker.rs - ADICIONA ISSO NO INÍCIO
+fn is_firefox() -> bool {
+    web_sys::window()
+        .and_then(|w| w.navigator().user_agent().ok())
+        .unwrap_or_default()
+        .contains("Firefox")
+}
+
 // ==================== INITIALIZATION ====================
 
 /// Initializes the SQLite web worker.
@@ -104,13 +112,35 @@ static WORKER_READY: Mutex<Option<oneshot::Sender<()>>> = Mutex::new(None);
 /// # Ok(())
 /// # }
 /// ```
+// #[wasm_bindgen]
+// pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
+//     if WORKER.get().is_some() {
+//         return Ok(());
+//     }
+//
+//     let worker = Worker::new(script_path)?;
+//     setup_ready_listener(&worker)?;
+//     WORKER
+//         .set(worker)
+//         .map_err(|_| JsValue::from_str("Worker already initialized"))?;
+//
+//     Ok(())
+// }
 #[wasm_bindgen]
 pub async fn initialize_worker(script_path: &str) -> Result<(), JsValue> {
     if WORKER.get().is_some() {
         return Ok(());
     }
 
-    let worker = Worker::new(script_path)?;
+    // 🔥 ÚNICA MUDANÇA: fallback para Firefox
+    let final_path = if is_firefox() && script_path.starts_with("blob:") {
+        // Firefox não gosta de blob URLs em workers
+        "/static/sqlite.org/sqlite3-worker1.js"
+    } else {
+        script_path
+    };
+
+    let worker = Worker::new(final_path)?;
     setup_ready_listener(&worker)?;
     WORKER
         .set(worker)

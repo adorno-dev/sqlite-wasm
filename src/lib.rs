@@ -51,6 +51,9 @@
 
 pub mod modules;
 
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsValue;
+
 use crate::modules::core::{bindings, database, sqlite_blob, worker};
 
 pub use bindings::{WasmApi, initialize_bindings};
@@ -120,15 +123,28 @@ pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsVal
     Ok(bindings::get_api())
 }
 
-pub use sqlite_blob::sqlite_worker_path;
-#[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostartEmbedded")]
-pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
-    // let assets = crate::modules::core::blob::EmbeddedAssets::new()?;
-    // worker::initialize_worker(assets.worker_url()).await?;
+// #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
+// pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
+//     // 🔥 GARANTE QUE O RUNTIME WASM FOI INICIALIZADO
+//     #[cfg(target_arch = "wasm32")]
+//     wasm_bindgen_futures::spawn_local(async move {});
+//     
+//     let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
+//     let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets)?;
+//
+//     worker::initialize_worker(&worker_url).await?;
+//     worker::wait_for_worker().await?;
+//
+//     bindings::initialize_bindings();
+//     Ok(bindings::get_api())
+// }
 
-    // let blob_url: String = sqlite_worker_path()?;
-    let path = "/static/sqlite.org/sqlite3-worker1.js";
-    worker::initialize_worker(path).await?;
+
+#[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
+pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
+    let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
+    let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets)?;
+    worker::initialize_worker(&worker_url).await?;
     worker::wait_for_worker().await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())

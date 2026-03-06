@@ -28,7 +28,7 @@ Zero-cost abstractions • Type-safe API • Persistent storage • Single-threa
 
 ## 🚀 Test It Live
 
-**👉 [Try SQLite Studio Online](https://sqlite-wasm.netlify.app)**  
+**👉 [Try SQLite Studio Online](https://sqlite-wasm.adorno-dev.workers.dev/)**  
 No installation needed. Opens directly in your browser.
 
 ---

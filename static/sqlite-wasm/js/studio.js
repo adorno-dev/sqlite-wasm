@@ -1,7 +1,16 @@
 // static/js/studio.js
+// const { autostart, open, close } = await import('/sqlite-wasm.js');
+//
+
+// const wasm = await import('/sqlite-wasm.js');
+// import * as wasm from '/sqlite-wasm.js';
+// const { autostart_embedded, open, close, worker_url, js_url, wasm_url, proxy_url } = wasm;
 
 import * as wasm from '/sqlite-wasm.js';
-const { default: init, autostart, open } = wasm;
+const { autostart_embedded, autostart, open, close } = wasm;
+
+import * as wasmModule from '/sqlite-wasm.js';
+
 import {
     elements, setAvailableDatabases, setDb, setCurrentDatabase,
     setPageSize, setCurrentPage, currentTable, lastResults, pageSize,
@@ -28,10 +37,10 @@ export function toggleDeleteButton(show) {
     }
 };
 
+
 // ===== INITIALIZATION =====
 async function initialize() {
     try {
-        const { autostart, open } = await import('/sqlite-wasm.js');
         const { loadDatabaseSchema, loadTableData } = await import('./database.js');
         const { setCurrentTable, setCurrentView, setDb, setCurrentDatabase, setAvailableDatabases, setTotalRows, setCurrentPage, pageSize } = await import('./state.js');
         const {
@@ -59,8 +68,49 @@ async function initialize() {
         }
 
         // 1️⃣ Inicializa worker
-        const workerDb = await autostart('/static/sqlite.org/sqlite3-worker1.js');
-        setDb(workerDb);
+        // const workerDb = await autostart('/static/sqlite.org/sqlite3-worker1.js');
+        // setDb(workerDb);
+
+
+        // Firefox precisa de instanciação explícita
+        if (navigator.userAgent.includes('Firefox')) {
+            if (wasmModule.default) {
+                await wasmModule.default();
+            }
+        }
+
+        // Agora pega as funções (já instanciadas)
+        const wasm = wasmModule;
+        const { autostart_embedded, open, close } = wasm;
+
+        console.log('✅ WASM carregado:', { 
+            autostart_embedded: !!autostart_embedded,
+            open: !!open,
+            close: !!close 
+        });
+
+        try {
+            const workerDb = await autostart_embedded();
+            setDb(workerDb);
+        } catch (e) {
+            console.error('❌ Erro ao inicializar:', e);
+        }
+
+
+        // // 🔥 USA O OBJETO CERTO!
+        // const wasm = wasmModule.wasmBindings || wasmModule;
+        //
+        // const { autostart_embedded, open, close } = wasm;
+        //
+        // console.log('✅ WASM carregado:', {
+        //     autostart_embedded: !!autostart_embedded,
+        //     open: !!open,
+        //     close: !!close
+        // });
+        //
+        // const workerDb = await autostart_embedded();
+        // setDb(workerDb);
+
 
         // 2️⃣ Escaneia bancos existentes
         const databases = await scanOPFSDatabases();
@@ -102,7 +152,7 @@ async function initialize() {
 
                     if (tableNames.includes(lastItem.name)) {
                         setCurrentTable(lastItem.name);
-                        
+
                         // 🔥 CONTA TOTAL DE REGISTROS PRA VALIDAR A PÁGINA
                         const countResult = await db.query(
                             `SELECT COUNT(*) as count FROM ${lastItem.name}`,
@@ -110,13 +160,13 @@ async function initialize() {
                         );
                         const total = countResult.result?.resultRows[0]?.count || 0;
                         const totalPages = Math.ceil(total / pageSize);
-                        
+
                         // 🔥 VALIDA SE A PÁGINA SALVA É VÁLIDA
                         if (savedPage > totalPages) {
                             savedPage = 1;
                             localStorage.setItem('sqlite-studio-current-page', '1');
                         }
-                        
+
                         await loadTableData(lastItem.name, savedPage);
                         markActiveTreeItem('table', lastItem.name);
                     }
@@ -161,15 +211,15 @@ async function initialize() {
                                 const testResult = await db.query(`SELECT * FROM ${lastItem.name} LIMIT 1`, []);
                                 total = testResult.result?.resultRows?.length || 1;
                             }
-                            
+
                             const totalPages = Math.ceil(total / pageSize);
-                            
+
                             // 🔥 VALIDA SE A PÁGINA SALVA É VÁLIDA
                             if (savedPage > totalPages) {
                                 savedPage = 1;
                                 localStorage.setItem('sqlite-studio-current-page', '1');
                             }
-                            
+
                             setCurrentPage(savedPage);
                             const offset = (savedPage - 1) * pageSize;
                             const result = await db.query(`SELECT * FROM ${lastItem.name} LIMIT ${pageSize} OFFSET ${offset}`, []);
@@ -328,7 +378,7 @@ function setupEventListeners() {
                 try {
 
                     // Fecha o banco atual primeiro
-                    const { close } = await import('/sqlite-wasm.js');
+                    // const { close } = await import('/sqlite-wasm.js');
                     await close();
 
                     // Deleta o arquivo via OPFS

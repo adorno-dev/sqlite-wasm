@@ -24,11 +24,15 @@ web-sys = { version = "0.3", features = [
     "Worker", 
     "MessageEvent", 
     "Window",
+    "Navigator",
     "Blob",
     "BlobPropertyBag",
     "Url",
+    "WorkerOptions",
+    "WorkerType",
     "console"
 ]}
+console_error_panic_hook = "0.1.7"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
