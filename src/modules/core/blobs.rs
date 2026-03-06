@@ -76,7 +76,12 @@ fn is_firefox() -> bool {
 ///
 /// # Example
 /// ```no_run
+/// # use sqlite_wasm::modules::core::blobs::assets;
+/// # use sqlite_wasm::modules::core::blobs::create_blob_url;
+/// # fn example() -> Result<(), wasm_bindgen::JsValue> {
 /// let url = create_blob_url(assets::SQLITE_JS, "text/javascript")?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn create_blob_url(data: &[u8], mime_type: &str) -> Result<String, JsValue> {
     let array = js_sys::Uint8Array::from(data);
@@ -103,6 +108,8 @@ pub fn create_blob_url(data: &[u8], mime_type: &str) -> Result<String, JsValue> 
 ///
 /// # Example
 /// ```no_run
+/// # use sqlite_wasm::modules::core::blobs::assets;
+/// # use sqlite_wasm::modules::core::blobs::create_data_url;
 /// let url = create_data_url(assets::SQLITE_JS, "text/javascript");
 /// ```
 pub fn create_data_url(data: &[u8], mime_type: &str) -> String {
@@ -252,9 +259,8 @@ fn create_wrapper_code(
 ///
 /// # Example
 /// ```no_run
+/// # use sqlite_wasm::modules::core::blobs;
 /// # async fn example() -> Result<(), wasm_bindgen::JsValue> {
-/// use sqlite_wasm::modules::core::blobs;
-/// 
 /// let worker_url = blobs::create_embedded_worker().await?;
 /// let worker = web_sys::Worker::new(&worker_url)?;
 /// # Ok(())
