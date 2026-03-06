@@ -6,6 +6,16 @@ SERVER_ENABLED=true  # Mude para false se não quiser iniciar servidor
 
 echo "🚀 Starting optimization pipeline..."
 
+# ==================== CREATE HEADERS FILE ====================
+echo "📋 Creating _headers file..."
+cat > _headers << 'EOF'
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+EOF
+
 # ==================== MINIFY SQLITE SOURCES (TEMPORARY) ====================
 echo "✂️ Creating minified copies of SQLite files..."
 
@@ -21,24 +31,38 @@ if [ ! -f "$TERSER" ]; then
     npm install terser
 fi
 
-# Minifica os arquivos SQLite
-$TERSER static/sqlite.org/sqlite3.js -o tmp_minified/sqlite3.js --compress --mangle
-$TERSER static/sqlite.org/sqlite3-worker1.js -o tmp_minified/sqlite3-worker1.js --compress --mangle
-$TERSER static/sqlite.org/sqlite3-opfs-async-proxy.js -o tmp_minified/sqlite3-opfs-async-proxy.js --compress --mangle
+# Array de arquivos SQLite para minificar
+SQLITE_FILES=(
+    "static/sqlite.org/sqlite3.js"
+    "static/sqlite.org/sqlite3-worker1.js" 
+    "static/sqlite.org/sqlite3-opfs-async-proxy.js"
+)
 
-# Backup dos originais
-cp static/sqlite.org/sqlite3.js static/sqlite.org/sqlite3.js.bak
-cp static/sqlite.org/sqlite3-worker1.js static/sqlite.org/sqlite3-worker1.js.bak
-cp static/sqlite.org/sqlite3-opfs-async-proxy.js static/sqlite.org/sqlite3-opfs-async-proxy.js.bak
+# Minifica cada arquivo e guarda tamanhos
+declare -A original_sizes
+declare -A minified_sizes
 
-# Substitui pelos minificados (SÓ PARA O BUILD)
-cp tmp_minified/* static/sqlite.org/
+for file in "${SQLITE_FILES[@]}"; do
+    filename=$(basename "$file")
+    original_sizes[$filename]=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
+    
+    $TERSER "$file" -o "tmp_minified/$filename" --compress --mangle 2>/dev/null
+    minified_sizes[$filename]=$(stat -c%s "tmp_minified/$filename" 2>/dev/null || stat -f%z "tmp_minified/$filename" 2>/dev/null)
+    
+    # Backup e substitui
+    cp "$file" "$file.bak"
+    cp "tmp_minified/$filename" "$file"
+done
 
 # Mostra redução de tamanho
 echo "📊 SQLite files size reduction:"
-ls -lh static/sqlite.org/sqlite3.js | awk '{printf "  sqlite3.js: %s\n", $5}'
-ls -lh static/sqlite.org/sqlite3-worker1.js | awk '{printf "  sqlite3-worker1.js: %s\n", $5}'
-ls -lh static/sqlite.org/sqlite3-opfs-async-proxy.js | awk '{printf "  sqlite3-opfs-async-proxy.js: %s\n", $5}'
+for file in "${SQLITE_FILES[@]}"; do
+    filename=$(basename "$file")
+    saved=$((original_sizes[$filename] - minified_sizes[$filename]))
+    percent=$(echo "scale=1; $saved * 100 / ${original_sizes[$filename]}" | bc 2>/dev/null || echo "0")
+    printf "  %-30s %'8d → %'8d bytes (%.1f%% smaller)\n" \
+        "$filename" "${original_sizes[$filename]}" "${minified_sizes[$filename]}" "$percent"
+done
 
 # ==================== BUILD ====================
 echo "📦 Building with Trunk..."
@@ -46,15 +70,15 @@ trunk build --release
 
 # ==================== RESTORE ORIGINALS ====================
 echo "♻️ Restoring original SQLite files..."
-mv static/sqlite.org/sqlite3.js.bak static/sqlite.org/sqlite3.js
-mv static/sqlite.org/sqlite3-worker1.js.bak static/sqlite.org/sqlite3-worker1.js
-mv static/sqlite.org/sqlite3-opfs-async-proxy.js.bak static/sqlite.org/sqlite3-opfs-async-proxy.js
+for file in "${SQLITE_FILES[@]}"; do
+    mv "$file.bak" "$file"
+done
 
 # Limpa temporários
 rm -rf tmp_minified
 
-# ==================== ASSETS ====================
-echo "📋 Copying extra files..."
+# ==================== COPY HEADERS ====================
+echo "📋 Copying headers to dist..."
 cp _headers dist/_headers
 
 # ==================== NODE_MODULES LOCAL ====================
@@ -71,7 +95,8 @@ HTML_MINIFIER="./node_modules/.bin/html-minifier"
 # ==================== MINIFICATION WITH TERSER ====================
 echo "🔥 Minifying JavaScript files with Terser..."
 
-find dist -name "*.js" -type f | while read file; do
+# Otimização: só minifica arquivos .js que não sejam os SQLite (já minificados)
+find dist -name "*.js" -type f ! -path "*/sqlite.org/*" | while read file; do
     if [ -f "$file" ]; then
         original_size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null)
         $TERSER "$file" -o "$file" --compress --mangle 2>/dev/null
@@ -137,6 +162,8 @@ app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     next();
 });
 
@@ -198,8 +225,12 @@ ls -lh dist/static/sqlite-wasm/js/*.js 2>/dev/null | awk '{printf "    %s: %s\n"
 
 echo ""
 echo "  SQLite files (now minified in blobs):"
-ls -lh static/sqlite.org/sqlite3.js | awk '{printf "    original sqlite3.js: %s (restored)\n", $5}'
-ls -lh tmp_minified/sqlite3.js 2>/dev/null | awk '{printf "    minified sqlite3.js: %s (used in build)\n", $5}'
+for file in "${SQLITE_FILES[@]}"; do
+    filename=$(basename "$file")
+    printf "    minified %s: %'8d bytes (was %'8d, saved %'d)\n" \
+        "$filename" "${minified_sizes[$filename]}" "${original_sizes[$filename]}" \
+        $((original_sizes[$filename] - minified_sizes[$filename]))
+done
 
 echo "================================================================================"
 echo ""
