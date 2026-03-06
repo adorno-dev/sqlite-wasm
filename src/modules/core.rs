@@ -69,3 +69,9 @@ pub mod worker;
 pub mod database;
 pub mod bindings;
 pub mod blobs;
+
+// Re-export main functions for easier access
+pub use worker::{initialize_embedded_worker, initialize_worker, w_msg, wait_for_worker};
+pub use database::{open, close, exec, query, db_id, is_open, get_db_uid, is_db_open};
+pub use bindings::{initialize_bindings, get_api, WasmApi};
+pub use blobs::{assets, create_embedded_worker, create_blob_url, create_data_url, create_asset_url};

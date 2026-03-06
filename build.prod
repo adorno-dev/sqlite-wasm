@@ -80,6 +80,7 @@ rm -rf tmp_minified
 # ==================== COPY HEADERS ====================
 echo "📋 Copying headers to dist..."
 cp _headers dist/_headers
+rm _headers
 
 # ==================== NODE_MODULES LOCAL ====================
 echo "📦 Setting up local node_modules..."
