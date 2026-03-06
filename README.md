@@ -12,17 +12,19 @@ Zero external files · Plug-and-play · Works in Chrome and Firefox
 
 --------------------------------------------------------------------
 
-✨ Features
-====================================================================
+## ✨ Features
 
- Icon  Feature                 Description
---------------------------------------------------------------------
- 🚀    Zero external files      All SQLite files embedded via include_bytes!
- 🔒    OPFS persistence         Databases survive page reloads and restarts
- 🧵    Web Worker               Database operations run in separate thread
- 🎯    Type Safe                Strongly typed Rust API
- 🔄    Async/Await              Promise-based API for JavaScript
- 🦊    Firefox support          Works flawlessly in Firefox
+| Icon | Feature | Description |
+|------|---------|-------------|
+| 🚀 | **Zero-cost abstractions** | Worker management with `OnceLock` and atomic counters |
+| 🔒 | **OPFS persistence** | Databases survive page reloads and browser restarts |
+| 🧵 | **Web Worker** | Database operations run in a separate thread |
+| 📦 | **Auto-minification** | JS glue code automatically minified (Brotli/Gzip) |
+| 🔐 | **COOP/COEP Headers** | Proper headers for SharedArrayBuffer support |
+| 🎯 | **Type Safe** | Strongly typed Rust API with proper error handling |
+| 🔄 | **Async/Await** | Promise-based API for JavaScript |
+| ⚡ | **Atomic operations** | Lock-free message passing with `AtomicU32` |
+
 
 --------------------------------------------------------------------
 
