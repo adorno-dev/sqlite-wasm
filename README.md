@@ -6,62 +6,48 @@
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://rust-lang.org)
 [![WASM](https://img.shields.io/badge/target-wasm32-purple.svg)](https://webassembly.org)
 
-**A high-performance SQLite wrapper for WebAssembly with OPFS support**  
-Zero-cost abstractions • Type-safe API • Persistent storage • Single-threaded by design
+A high-performance SQLite wrapper for WebAssembly with OPFS support
+Zero external files - Plug-and-play - Works in Chrome and Firefox
 
----
+--------------------------------------------------------------------
 
-## ✨ Features
+✨ Features
 
-| Icon | Feature | Description |
-|------|---------|-------------|
-| 🚀 | **Zero-cost abstractions** | Worker management with `OnceLock` and atomic counters |
-| 🔒 | **OPFS persistence** | Databases survive page reloads and browser restarts |
-| 🧵 | **Web Worker** | Database operations run in a separate thread |
-| 📦 | **Auto-minification** | JS glue code automatically minified (Brotli/Gzip) |
-| 🔐 | **COOP/COEP Headers** | Proper headers for SharedArrayBuffer support |
-| 🎯 | **Type Safe** | Strongly typed Rust API with proper error handling |
-| 🔄 | **Async/Await** | Promise-based API for JavaScript |
-| ⚡ | **Atomic operations** | Lock-free message passing with `AtomicU32` |
+Icon  Feature                 Description
+--------------------------------------------------------------------
+🚀    Zero external files      All SQLite files embedded via include_bytes!
+🔒    OPFS persistence         Databases survive page reloads and browser restarts
+🧵    Web Worker               Database operations run in a separate thread
+🎯    Type Safe                Strongly typed Rust API with proper error handling
+🔄    Async/Await              Promise-based API for JavaScript
+🦊    Firefox support          Works flawlessly in Firefox (tested)
 
----
+--------------------------------------------------------------------
 
-## 🚀 Test It Live
+🚀 Test It Live
 
-**👉 [Try SQLite Studio Online](https://sqlite-wasm.adorno-dev.workers.dev/)**  
+👉 Try SQLite Studio Online: https://sqlite-wasm.adorno-dev.workers.dev/
 No installation needed. Opens directly in your browser.
 
----
+--------------------------------------------------------------------
 
-## 📦 Installation
+📦 Installation
 
-Add to your `Cargo.toml`:
+Add to your Cargo.toml:
 
-```toml
 [dependencies]
-sqlite-wasm = "0.1"
-```
+sqlite-wasm = "0.1.3"
 
-Or via CLI:
+--------------------------------------------------------------------
 
-```bash
-cargo add sqlite-wasm
-```
+🔨 Building
 
----
-
-## 🔨 Building
-
-```bash
 trunk build --release
-trunk serve --release
-```
 
----
+--------------------------------------------------------------------
 
-## 🏗️ Architecture
+🏗️ Architecture
 
-```
 ┌─────────────────┐
 │   Your App      │
 │   (Rust/JS)     │
@@ -70,15 +56,15 @@ trunk serve --release
 ┌────────▼────────┐
 │   sqlite-wasm   │
 │   ┌────────────┐│
-│   │  Worker    ││  ── Singleton, auto-managed
-│   │  Manager   ││
+│   │   Worker   ││  ── Singleton, auto-managed
+│   │   Manager  ││
 │   └────────────┘│
 │   ┌────────────┐│
-│   │   Message  ││  ── Atomic counters, oneshot channels
-│   │   Passing  ││
+│   │  Embedded  ││  ── Files via include_bytes!
+│   │   Assets   ││      (Blob/Data URLs)
 │   └────────────┘│
 │   ┌────────────┐│
-│   │    OPFS    ││  ── Persistent, high-performance
+│   │    OPFS    ││  ── Persistent storage
 │   │   Storage  ││
 │   └────────────┘│
 └────────┬────────┘
@@ -87,137 +73,122 @@ trunk serve --release
 │  SQLite Worker  │
 │  (JavaScript)   │
 └─────────────────┘
-```
 
----
+--------------------------------------------------------------------
 
-### API Reference
+📋 API Reference
 
-| Function | Description |
-|----------|-------------|
-| `autostart(path)` | Initializes the SQLite worker (call once) |
-| `open(name)` | Opens or creates a database |
-| `exec(sql, params)` | Executes SQL without returning rows |
-| `query(sql, params)` | Executes SELECT and returns rows |
-| `close()` | Closes the current database |
-| `is_open()` | Checks if a database is open |
-| `db_id()` | Returns current database ID (debug) |
+Function              Description
+--------------------------------------------------------------------
+autostart_embedded()  Initializes worker with embedded files
+autostart(path)       Legacy: initializes worker with external file
+open(name)            Opens or creates a database
+exec(sql, params)     Executes SQL without returning rows
+query(sql, params)    Executes SELECT and returns rows
+close()               Closes the current database
+is_open()             Checks if a database is open
 
----
+--------------------------------------------------------------------
 
-## 🦀 Rust Usage
+🦀 Rust Usage
 
-### Quick Start
+Add to your Cargo.toml:
 
-```rust
-use sqlite_wasm::{autostart, open, close};
+[dependencies]
+sqlite-wasm = "0.1.3"
 
-#[wasm_bindgen]
-pub async fn example() -> Result<(), JsValue> {
-    // 1. Initialize worker
-    let db = autostart("/static/sqlite.org/sqlite3-worker1.js").await?;
+In your Rust code:
+
+use sqlite_wasm::{autostart_embedded, open, exec, query, close};
+
+#[wasm_bindgen(start)]
+pub async fn start() -> Result<(), JsValue> {
+    // 1. Initialize worker with embedded files
+    autostart_embedded().await?;
     
     // 2. Open database
     open("myapp.sqlite3").await?;
     
     // 3. Create table
-    db.exec(
-        "CREATE TABLE IF NOT EXISTS users (id INTEGER, name TEXT)",
-        vec![]
-    ).await?;
+    exec("CREATE TABLE IF NOT EXISTS users (id INTEGER, name TEXT)", vec![]).await?;
     
     // 4. Insert data
-    db.exec(
-        "INSERT INTO users VALUES (?, ?)",
-        vec![1.into(), "Alice".into()]
-    ).await?;
+    exec("INSERT INTO users VALUES (1, 'Alice')", vec![]).await?;
     
     // 5. Query data
-    let users = db.query("SELECT * FROM users", vec![]).await?;
+    let users = query("SELECT * FROM users", vec![]).await?;
     
     // 6. Close database
     close().await?;
     
     Ok(())
 }
-```
 
----
+--------------------------------------------------------------------
 
-## 🌐 JavaScript Usage
+🌐 JavaScript Usage
 
-After initialization, the global `wasm` object is available with all methods.
-
-### Quick Start
-
-```javascript
-import init from './pkg/sqlite_wasm.js';
+import init, { 
+    autostart_embedded, 
+    open, 
+    exec, 
+    query, 
+    close 
+} from './pkg/sqlite_wasm.js';
 
 async function start() {
-    // 1. Load WASM module
     await init();
     
-    // 2. Initialize worker
-    await wasm.autostart('/sqlite.org/sqlite3-worker1.js');
+    // 1. Initialize worker with embedded files
+    await autostart_embedded();
     
-    // 3. Open database
-    await wasm.open('app.db');
+    // 2. Open database
+    await open('myapp.sqlite3');
     
-    // 4. Create table
-    await wasm.exec(
-        `CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE
-        )`,
-        []
-    );
+    // 3. Create table
+    await exec('CREATE TABLE users (id INTEGER, name TEXT)', []);
     
-    // 5. Insert data
-    await wasm.exec(
-        "INSERT INTO users (name, email) VALUES (?, ?)",
-        ["Alice", "alice@example.com"]
-    );
+    // 4. Insert data
+    await exec('INSERT INTO users VALUES (1, "Alice")', []);
     
-    // 6. Query data
-    const result = await wasm.query("SELECT * FROM users", []);
+    // 5. Query data
+    const result = await query('SELECT * FROM users', []);
     console.log('Users:', result.resultRows);
     
-    // 7. Close database
-    await wasm.close();
+    // 6. Close database
+    await close();
 }
 
-start().catch(console.error);
-```
+start();
 
-### JavaScript API
+--------------------------------------------------------------------
 
-| Method | Description | Example |
-|--------|-------------|---------|
-| `autostart(path)` | Initializes worker | `await wasm.autostart('/sqlite.org/sqlite3-worker1.js')` |
-| `open(name)` | Opens/creates database | `await wasm.open('mydb.sqlite3')` |
-| `exec(sql, params)` | Executes SQL | `await wasm.exec("INSERT INTO users VALUES (?)", ["João"])` |
-| `query(sql, params)` | Runs SELECT | `const res = await wasm.query("SELECT * FROM users", [])` |
-| `close()` | Closes database | `await wasm.close()` |
-
----
-
-## 🌍 Browser Requirements
+🌍 Browser Requirements
 
 - WebAssembly support
 - Web Workers
 - OPFS (Origin Private File System)
 - COOP/COEP headers (Cross-Origin Isolation)
 
-**Recommended:** Latest Chrome, Edge, or other Chromium-based browsers.
+Works in Chrome, Firefox, and other modern browsers.
 
----
+--------------------------------------------------------------------
 
-## 📄 License
+🧪 How It Works
 
-MIT © [adorno-dev](https://github.com/adorno-dev)
+1. Embedding: All SQLite files are embedded at compile time using include_bytes!
+2. URL creation: At runtime, files become Blob URLs (Chrome) or Data URLs (Firefox)
+3. Worker wrapper: A custom worker intercepts importScripts and fetch
+4. File mapping: Original filenames map to embedded URLs via a FILES object
+5. Zero external files: Everything runs from memory
 
----
+--------------------------------------------------------------------
 
-Built with 🦀 and ❤️ for maximum performance  
+📄 License
+
+MIT © adorno-dev (https://github.com/adorno-dev)
+
+--------------------------------------------------------------------
+
+Built with 🦀 and ❤️
 Made in Rust · Runs in Browser · Powered by SQLite
