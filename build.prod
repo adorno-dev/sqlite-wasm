@@ -1,0 +1,11 @@
+#!/bin/bash
+echo "🚀 Building release..."
+trunk build --release
+
+echo "Copying files..."
+cp _headers dist/_headers
+
+echo "🧹 Limpando variáveis do Trunk..."
+sed -i 's/{{__trunk_address__}}//g; s/{{__trunk_ws_base__}}//g' dist/index.html
+
+echo "✅ Build finalizado! Pronto para subir pro Cloudflare."

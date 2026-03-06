@@ -69,4 +69,3 @@ pub mod worker;
 pub mod database;
 pub mod bindings;
 pub mod blobs;
-pub mod sqlite_blob;

@@ -123,46 +123,6 @@ pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsVal
     Ok(bindings::get_api())
 }
 
-// #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
-// pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
-//     // 🔥 GARANTE QUE O RUNTIME WASM FOI INICIALIZADO
-//     #[cfg(target_arch = "wasm32")]
-//     wasm_bindgen_futures::spawn_local(async move {});
-//     
-//     let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
-//     let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets)?;
-//
-//     worker::initialize_worker(&worker_url).await?;
-//     worker::wait_for_worker().await?;
-//
-//     bindings::initialize_bindings();
-//     Ok(bindings::get_api())
-// }
-
-
-// #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
-// pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
-//     let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
-//     let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets)?;
-//     worker::initialize_worker(&worker_url).await?;
-//     worker::wait_for_worker().await?;
-//     bindings::initialize_bindings();
-//     Ok(bindings::get_api())
-// }
-
-// #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
-// pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
-//     let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
-//     
-//     // 🔥 AGORA USA AWAIT!
-//     let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets).await?;
-//     
-//     worker::initialize_worker(&worker_url).await?;
-//     worker::wait_for_worker().await?;
-//     bindings::initialize_bindings();
-//     Ok(bindings::get_api())
-// }
-
 #[wasm_bindgen(js_name = "autostart_embedded")]
 pub async fn autostart_embedded() -> Result<WasmApi, JsValue> {
     // Inicializa o worker com os assets embutidos

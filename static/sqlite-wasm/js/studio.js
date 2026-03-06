@@ -83,34 +83,12 @@ async function initialize() {
         const wasm = wasmModule;
         const { autostart_embedded, open, close } = wasm;
 
-        console.log('✅ WASM carregado:', { 
-            autostart_embedded: !!autostart_embedded,
-            open: !!open,
-            close: !!close 
-        });
-
         try {
             const workerDb = await autostart_embedded();
             setDb(workerDb);
         } catch (e) {
             console.error('❌ Erro ao inicializar:', e);
         }
-
-
-        // // 🔥 USA O OBJETO CERTO!
-        // const wasm = wasmModule.wasmBindings || wasmModule;
-        //
-        // const { autostart_embedded, open, close } = wasm;
-        //
-        // console.log('✅ WASM carregado:', {
-        //     autostart_embedded: !!autostart_embedded,
-        //     open: !!open,
-        //     close: !!close
-        // });
-        //
-        // const workerDb = await autostart_embedded();
-        // setDb(workerDb);
-
 
         // 2️⃣ Escaneia bancos existentes
         const databases = await scanOPFSDatabases();
