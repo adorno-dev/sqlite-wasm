@@ -54,7 +54,7 @@ pub mod modules;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use crate::modules::core::{bindings, database, sqlite_blob, worker};
+use crate::modules::core::{bindings, database, worker};
 
 pub use bindings::{WasmApi, initialize_bindings};
 pub use database::{close, db_id, exec, is_open, open, query};
@@ -140,11 +140,33 @@ pub async fn autostart(worker_path: &str) -> Result<WasmApi, wasm_bindgen::JsVal
 // }
 
 
-#[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
-pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
-    let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
-    let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets)?;
-    worker::initialize_worker(&worker_url).await?;
+// #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
+// pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
+//     let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
+//     let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets)?;
+//     worker::initialize_worker(&worker_url).await?;
+//     worker::wait_for_worker().await?;
+//     bindings::initialize_bindings();
+//     Ok(bindings::get_api())
+// }
+
+// #[wasm_bindgen::prelude::wasm_bindgen(js_name = "autostart_embedded")]
+// pub async fn autostart_embedded() -> Result<WasmApi, wasm_bindgen::JsValue> {
+//     let assets = crate::modules::core::blobs::EmbeddedAssets::new()?;
+//     
+//     // 🔥 AGORA USA AWAIT!
+//     let worker_url = crate::modules::core::blobs::create_embedded_worker(&assets).await?;
+//     
+//     worker::initialize_worker(&worker_url).await?;
+//     worker::wait_for_worker().await?;
+//     bindings::initialize_bindings();
+//     Ok(bindings::get_api())
+// }
+
+#[wasm_bindgen(js_name = "autostart_embedded")]
+pub async fn autostart_embedded() -> Result<WasmApi, JsValue> {
+    // Inicializa o worker com os assets embutidos
+    worker::initialize_embedded_worker().await?;
     worker::wait_for_worker().await?;
     bindings::initialize_bindings();
     Ok(bindings::get_api())

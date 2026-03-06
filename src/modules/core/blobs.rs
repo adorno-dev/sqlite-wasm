@@ -1,158 +1,26 @@
-//! Gerenciamento de Blob URLs para arquivos embutidos
+//! Management of Blob/Data URLs for embedded files
 //!
-//! Este módulo fornece uma interface limpa para criar Blob URLs
-//! a partir de dados embutidos com include_bytes!.
+//! This module provides functions to create URLs from embedded data,
+//! automatically choosing between Blob (Chrome) and Data URL (Firefox).
 
 use wasm_bindgen::prelude::*;
 use web_sys::{Blob, Url};
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 
-/// Estrutura que gerencia um conjunto de Blob URLs
-pub struct EmbeddedAssets {
-    worker_url: String,
-    js_url: String,
-    proxy_url: String,
-    wasm_url: String,
+// ==================== EMBEDDED ASSETS ====================
+
+/// Module with all static files embedded via include_bytes!
+pub mod assets {
+    pub const SQLITE_JS: &[u8] = include_bytes!("../../../static/sqlite.org/sqlite3.js");
+    pub const SQLITE_WASM: &[u8] = include_bytes!("../../../static/sqlite.org/sqlite3.wasm");
+    pub const SQLITE_WORKER: &[u8] = include_bytes!("../../../static/sqlite.org/sqlite3-worker1.js");
+    pub const SQLITE_PROXY: &[u8] = include_bytes!("../../../static/sqlite.org/sqlite3-opfs-async-proxy.js");
 }
 
-impl EmbeddedAssets {
-    /// Cria todas as Blob URLs a partir dos dados embutidos
-    pub fn new() -> Result<Self, JsValue> {
-        // Dados embutidos (poderiam vir de um módulo separado)
-        const SQLITE_JS: &[u8] = include_bytes!("../../../static/sqlite.org/sqlite3.js");
-        const SQLITE_WASM: &[u8] = include_bytes!("../../../static/sqlite.org/sqlite3.wasm");
-        const SQLITE_WORKER: &[u8] =
-            include_bytes!("../../../static/sqlite.org/sqlite3-worker1.js");
-        const SQLITE_OPFS_ASYNC_PROXY: &[u8] =
-            include_bytes!("../../../static/sqlite.org/sqlite3-opfs-async-proxy.js");
+// ==================== BROWSER DETECTION ====================
 
-        Ok(Self {
-            worker_url: Self::create_worker_url(SQLITE_WORKER)?,
-            js_url: Self::create_js_url(SQLITE_JS)?,
-            proxy_url: Self::create_proxy_url(SQLITE_OPFS_ASYNC_PROXY)?,
-            wasm_url: Self::create_wasm_url(SQLITE_WASM)?,
-        })
-    }
-
-    /// URL do worker principal
-    pub fn worker_url(&self) -> &str {
-        &self.worker_url
-    }
-
-    /// URL do arquivo sqlite3.js
-    pub fn js_url(&self) -> &str {
-        &self.js_url
-    }
-
-    /// URL do proxy OPFS
-    pub fn proxy_url(&self) -> &str {
-        &self.proxy_url
-    }
-
-    /// URL do binário WASM
-    pub fn wasm_url(&self) -> &str {
-        &self.wasm_url
-    }
-
-    /// Cria Blob URL para o worker (texto)
-    fn create_worker_url(data: &[u8]) -> Result<String, JsValue> {
-        let code = String::from_utf8_lossy(data).to_string(); // ← .to_string() AQUI!
-        let array = js_sys::Array::of1(&code.into());
-        let blob = Blob::new_with_str_sequence(&array)?;
-        Url::create_object_url_with_blob(&blob)
-    }
-
-    /// Cria Blob URL para o proxy OPFS
-    fn create_proxy_url(data: &[u8]) -> Result<String, JsValue> {
-        let code = String::from_utf8_lossy(data).to_string(); // ← .to_string() AQUI!
-        let array = js_sys::Array::of1(&code.into());
-        let blob = Blob::new_with_str_sequence(&array)?;
-        Url::create_object_url_with_blob(&blob)
-    }
-
-    /// Cria Blob URL para arquivos WASM (binário)
-    fn create_wasm_url(data: &[u8]) -> Result<String, JsValue> {
-        let array = js_sys::Uint8Array::from(data);
-        let js_array = js_sys::Array::of1(&array.into());
-
-        // Cria o blob com as opções
-        let options = web_sys::BlobPropertyBag::new();
-        options.set_type("application/wasm");
-
-        let blob = Blob::new_with_u8_array_sequence_and_options(&js_array, &options)?;
-
-        Url::create_object_url_with_blob(&blob)
-    }
-
-    /// Cria Blob URL para arquivos JavaScript
-    fn create_js_url(data: &[u8]) -> Result<String, JsValue> {
-        let code = String::from_utf8_lossy(data).to_string();
-        let array = js_sys::Array::of1(&code.into());
-
-        let options = web_sys::BlobPropertyBag::new();
-        options.set_type("application/javascript");
-
-        let blob = Blob::new_with_str_sequence_and_options(&array, &options)?;
-
-        Url::create_object_url_with_blob(&blob)
-    }
-}
-
-// pub fn create_embedded_worker(assets: &EmbeddedAssets) -> Result<String, JsValue> {
-//     // 1. Cria blob com MIME type explícito
-//     let options = web_sys::BlobPropertyBag::new();
-//     options.set_type("application/javascript");
-//
-//     // 2. Wrapper COMPLETO com TODOS os arquivos mapeados
-//     let worker_code = format!(
-//         r#"
-//         // MAPEAMENTO DE TODOS OS ARQUIVOS
-//         const FILES = {{
-//             'sqlite3.js': '{}',
-//             'sqlite3.wasm': '{}',
-//             'sqlite3-opfs-async-proxy.js': '{}',
-//             'sqlite3-worker1.js': '{}'
-//         }};
-//
-//         // Intercepta importScripts
-//         const originalImportScripts = importScripts;
-//         importScripts = function(...urls) {{
-//             const mapped = urls.map(url => FILES[url] || url);
-//             return originalImportScripts.apply(this, mapped);
-//         }};
-//
-//         // Intercepta fetch
-//         const originalFetch = fetch;
-//         fetch = function(url, options) {{
-//             const mappedUrl = FILES[url] || url;
-//             return originalFetch.call(this, mappedUrl, options);
-//         }};
-//
-//         // Intercepta Worker
-//         const originalWorker = Worker;
-//         Worker = function(url, options) {{
-//             const mappedUrl = FILES[url] || url;
-//             return new originalWorker(mappedUrl, options);
-//         }};
-//
-//         // Carrega o worker original (que também está mapeado)
-//         importScripts('{}');
-//         "#,
-//         assets.js_url(),
-//         assets.wasm_url(),
-//         assets.proxy_url(),
-//         assets.worker_url(),  // ← 4 ARGUMENTOS pro FILES
-//         assets.worker_url()    // ← 5º ARGUMENTO pro importScripts
-//     );
-//
-//     let worker_blob = web_sys::Blob::new_with_str_sequence_and_options(
-//         &js_sys::Array::of1(&worker_code.into()),
-//         &options
-//     )?;
-//
-//     Ok(web_sys::Url::create_object_url_with_blob(&worker_blob)?)
-// }
-
-/// Detecta se é Firefox
+/// Detects if the browser is Firefox (needs Data URL)
 fn is_firefox() -> bool {
     web_sys::window()
         .and_then(|w| w.navigator().user_agent().ok())
@@ -160,146 +28,133 @@ fn is_firefox() -> bool {
         .contains("Firefox")
 }
 
-// pub fn create_embedded_worker(assets: &EmbeddedAssets) -> Result<String, JsValue> {
-//     let is_ff = is_firefox();
-//
-//     let options = web_sys::BlobPropertyBag::new();
-//     options.set_type("application/javascript");
-//
-//     let worker_code = format!(
-//         r#"
-//         // MAPEAMENTO DE TODOS OS ARQUIVOS
-//         const FILES = {{
-//             'sqlite3.js': '{}',
-//             'sqlite3.wasm': '{}',
-//             'sqlite3-opfs-async-proxy.js': '{}',
-//             'sqlite3-worker1.js': '{}'
-//         }};
-//
-//         // LOG PRA VER SE O MAPEAMENTO EXISTE
-//         console.log('📦 FILES mapeados:', FILES);
-//
-//         // Intercepta importScripts COM DEBUG
-//         const originalImportScripts = importScripts;
-//         importScripts = function(...urls) {{
-//             console.log('🔄 importScripts chamado com:', urls);
-//             const mapped = urls.map(url => {{
-//                 console.log('  ↪ mapeando:', url, '→', FILES[url] || url);
-//                 return FILES[url] || url;
-//             }});
-//             console.log('  ✅ URLs mapeadas:', mapped);
-//             return originalImportScripts.apply(this, mapped);
-//         }};
-//
-//         // Intercepta fetch
-//         const originalFetch = fetch;
-//         fetch = function(url, options) {{
-//             const mappedUrl = FILES[url] || url;
-//             return originalFetch.call(this, mappedUrl, options);
-//         }};
-//
-//         // Intercepta Worker
-//         const originalWorker = Worker;
-//         Worker = function(url, options) {{
-//             const mappedUrl = FILES[url] || url;
-//             return new originalWorker(mappedUrl, options);
-//         }};
-//
-//         {}('{}');
-//         "#,
-//         assets.js_url(),
-//         assets.wasm_url(),
-//         assets.proxy_url(),
-//         assets.worker_url(),
-//         if is_ff { "import" } else { "importScripts" },
-//         assets.worker_url()
-//     );
-//
-//     let worker_blob = web_sys::Blob::new_with_str_sequence_and_options(
-//         &js_sys::Array::of1(&worker_code.into()),
-//         &options
-//     )?;
-//
-//     Ok(web_sys::Url::create_object_url_with_blob(&worker_blob)?)
-// }
+// ==================== URL CREATION ====================
 
-pub fn create_embedded_worker(assets: &EmbeddedAssets) -> Result<String, JsValue> {
-    let is_ff = is_firefox();
-
-    // 🔥 FIREFOX PRECISA DE text/javascript, CHROME ACEITA application/javascript
+/// Creates a Blob URL from binary data (ideal for Chrome)
+pub fn create_blob_url(data: &[u8], mime_type: &str) -> Result<String, JsValue> {
+    let array = js_sys::Uint8Array::from(data);
+    let js_array = js_sys::Array::of1(&array.into());
+    
     let options = web_sys::BlobPropertyBag::new();
-    if is_ff {
-        options.set_type("text/javascript");
+    options.set_type(mime_type);
+    
+    let blob = Blob::new_with_u8_array_sequence_and_options(&js_array, &options)?;
+    Ok(Url::create_object_url_with_blob(&blob)?)
+}
+
+/// Creates a Data URL from binary data (works in Firefox)
+pub fn create_data_url(data: &[u8], mime_type: &str) -> String {
+    let base64 = STANDARD.encode(data);
+    format!("data:{};base64,{}", mime_type, base64)
+}
+
+/// Creates the appropriate URL based on browser
+pub fn create_asset_url(data: &[u8], mime_type: &str) -> Result<String, JsValue> {
+    // if is_firefox() {
+    //     Ok(create_data_url(data, mime_type))
+    // } else {
+    //     create_blob_url(data, mime_type)
+    // }
+    create_blob_url(data, mime_type)
+}
+
+// ==================== WORKER WRAPPER ====================
+
+/// Creates the wrapper code that intercepts importScripts and fetch
+fn create_wrapper_code(
+    js_url: &str,
+    wasm_url: &str,
+    proxy_url: &str,
+    worker_url: &str,
+    is_ff: bool,
+) -> String {
+    let load_method = if is_ff { "import" } else { "importScripts" };
+    
+    // For Firefox, the proxy needs special handling to inherit page origin
+    let proxy_handler = if is_ff {
+        r#"
+        // Firefox: proxy needs to inherit page origin
+        const originalWorker = Worker;
+        Worker = function(url, options) {
+            if (url === 'sqlite3-opfs-async-proxy.js') {
+                // Use a blob with the SAME ORIGIN as the page
+                const proxyBlob = new Blob(
+                    [`importScripts('${FILES[url]}');`], 
+                    { type: 'text/javascript' }
+                );
+                const proxyBlobUrl = URL.createObjectURL(proxyBlob);
+                
+                // Return a CLASSIC worker (not module)
+                return new originalWorker(proxyBlobUrl, { type: 'classic' });
+            }
+            const mappedUrl = FILES[url] || url;
+            return new originalWorker(mappedUrl, options);
+        };
+        "#
     } else {
-        options.set_type("application/javascript");
-    }
-
-    let worker_code = format!(
-        r#"   
-    // MAPEAMENTO DE TODOS OS ARQUIVOS
-    const FILES = {{
-        'sqlite3.js': '{}',
-        'sqlite3.wasm': '{}',
-        'sqlite3-opfs-async-proxy.js': '{}',   
-        'sqlite3-worker1.js': '{}'
-    }};   
-    
-    console.log('📦 FILES mapeados:', FILES);
-    
-    const originalImportScripts = importScripts;
-    importScripts = function(...urls) {{
-        console.log('🔄 importScripts chamado com:', urls);
-        const mapped = urls.map(url => {{
-            console.log('  ↪ mapeando:', url, '→', FILES[url] || url);
-            return FILES[url] || url;
-        }});
-        console.log('  ✅ URLs mapeadas:', mapped);
-        return originalImportScripts.apply(this, mapped);
-    }};
-    
-    const originalFetch = fetch;
-    fetch = function(url, options) {{
-        const mappedUrl = FILES[url] || url;
-        return originalFetch.call(this, mappedUrl, options);
-    }};
-    
-    const originalWorker = Worker;
-    Worker = function(url, options) {{
-        const mappedUrl = FILES[url] || url;
-        return new originalWorker(mappedUrl, options);
-    }};
-    
-    {}('{}');
-    "#,
-        assets.js_url(),
-        assets.wasm_url(),
-        assets.proxy_url(),
-        assets.worker_url(),
-        if is_ff { "import" } else { "importScripts" },
-        assets.worker_url()
-    );
-
-    let worker_blob = web_sys::Blob::new_with_str_sequence_and_options(
-        &js_sys::Array::of1(&worker_code.into()),
-        &options,
-    )?;
-
-    Ok(web_sys::Url::create_object_url_with_blob(&worker_blob)?)
-}
-
-macro_rules! revoke_urls {
-    ($($url:expr),*) => {
-        $(let _ = Url::revoke_object_url($url);)*
+        r#"
+        // Chrome: works directly
+        const originalWorker = Worker;
+        Worker = function(url, options) {
+            const mappedUrl = FILES[url] || url;
+            return new originalWorker(mappedUrl, options);
+        };
+        "#
     };
+    
+    format!(
+        r#"
+        const FILES = {{
+            'sqlite3.js': '{}',
+            'sqlite3.wasm': '{}',
+            'sqlite3-opfs-async-proxy.js': '{}',
+            'sqlite3-worker1.js': '{}'
+        }};
+        
+        const originalImportScripts = importScripts;
+        importScripts = function(...urls) {{
+            const mapped = urls.map(url => FILES[url] || url);
+            return originalImportScripts.apply(this, mapped);
+        }};
+        
+        const originalFetch = fetch;
+        fetch = function(url, options) {{
+            const mappedUrl = FILES[url] || url;
+            return originalFetch.call(this, mappedUrl, options);
+        }};
+        
+        {}
+        
+        {}('{}');
+        "#,
+        js_url, wasm_url, proxy_url, worker_url,
+        proxy_handler,
+        load_method, worker_url
+    )
 }
 
-impl Drop for EmbeddedAssets {
-    fn drop(&mut self) {
-        revoke_urls!(
-            &self.worker_url,
-            &self.js_url,
-            &self.proxy_url,
-            &self.wasm_url
-        );
-    }
+// ==================== MAIN FUNCTION ====================
+
+/// Creates a worker wrapper with all embedded files
+pub async fn create_embedded_worker() -> Result<String, JsValue> {
+    let is_ff = is_firefox();
+    
+    // 1. Create URLs for each asset (Blob or Data URL based on browser)
+    let js_url = create_asset_url(assets::SQLITE_JS, "text/javascript")?;
+    let wasm_url = create_asset_url(assets::SQLITE_WASM, "application/wasm")?;
+    let proxy_url = create_asset_url(assets::SQLITE_PROXY, "text/javascript")?;
+    let worker_url = create_asset_url(assets::SQLITE_WORKER, "text/javascript")?;
+    
+    // 2. Generate wrapper code
+    let wrapper_code = create_wrapper_code(&js_url, &wasm_url, &proxy_url, &worker_url, is_ff);
+    
+    // 3. Create final worker wrapper URL
+    // if is_ff {
+    //     // Firefox: Data URL (avoids origin issues)
+    //     Ok(create_data_url(wrapper_code.as_bytes(), "text/javascript"))
+    // } else {
+    //     // Chrome: Blob URL (more efficient)
+    //     create_blob_url(wrapper_code.as_bytes(), "text/javascript")
+    // }
+    create_blob_url(wrapper_code.as_bytes(), "text/javascript")
 }

@@ -30,9 +30,12 @@ web-sys = { version = "0.3", features = [
     "Url",
     "WorkerOptions",
     "WorkerType",
+    "FileReader",
     "console"
 ]}
 console_error_panic_hook = "0.1.7"
+base64 = "0.22.1"
+futures = "0.3.32"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
