@@ -1,13 +1,7 @@
 // static/js/studio.js
-// const { autostart, open, close } = await import('/sqlite-wasm.js');
-//
-
-// const wasm = await import('/sqlite-wasm.js');
-// import * as wasm from '/sqlite-wasm.js';
-// const { autostart_embedded, open, close, worker_url, js_url, wasm_url, proxy_url } = wasm;
 
 import * as wasm from '/sqlite-wasm.js';
-const { autostart_embedded, autostart, open, close } = wasm;
+const { autostart_embedded, open, close } = wasm;
 
 import * as wasmModule from '/sqlite-wasm.js';
 
@@ -25,7 +19,6 @@ import {
     updateDatabaseSelector, showNoDatabases, renderTable, updatePagination
 } from './ui.js';
 
-// studio.js - no início, depois dos imports
 export function toggleDeleteButton(show) {
     const deleteBtn = document.getElementById('deleteDbBtn');
     if (deleteBtn) {
@@ -37,8 +30,6 @@ export function toggleDeleteButton(show) {
     }
 };
 
-
-// ===== INITIALIZATION =====
 async function initialize() {
     try {
         const { loadDatabaseSchema, loadTableData } = await import('./database.js');
@@ -57,7 +48,6 @@ async function initialize() {
             updatePagination
         } = await import('./ui.js');
 
-        // 0️⃣ Recupera o tema salvo
         const savedTheme = localStorage.getItem('sqlite-studio-theme');
         if (savedTheme === 'light') {
             document.body.classList.add('light');
@@ -67,19 +57,12 @@ async function initialize() {
             }
         }
 
-        // 1️⃣ Inicializa worker
-        // const workerDb = await autostart('/static/sqlite.org/sqlite3-worker1.js');
-        // setDb(workerDb);
-
-
-        // Firefox precisa de instanciação explícita
         if (navigator.userAgent.includes('Firefox')) {
             if (wasmModule.default) {
                 await wasmModule.default();
             }
         }
 
-        // Agora pega as funções (já instanciadas)
         const wasm = wasmModule;
         const { autostart_embedded, open, close } = wasm;
 
@@ -90,35 +73,27 @@ async function initialize() {
             console.error('❌ Erro ao inicializar:', e);
         }
 
-        // 2️⃣ Escaneia bancos existentes
         const databases = await scanOPFSDatabases();
         setAvailableDatabases(databases);
 
-        // 3️⃣ Recupera banco, item e query selecionados
         const lastDb = localStorage.getItem('sqlite-studio-last-db');
         const lastItem = JSON.parse(localStorage.getItem('sqlite-studio-last-item') || 'null');
         const lastQuery = localStorage.getItem('sqlite-studio-last-query');
 
-        // 4️⃣ Restaura query no editor (se houver)
         if (lastQuery && elements.sqlEditor) {
             elements.sqlEditor.value = lastQuery;
         }
 
-        // 5️⃣ Se o banco ainda existe, seleciona ele
         if (lastDb && databases.includes(lastDb)) {
             await open(lastDb);
             setCurrentDatabase(lastDb);
 
-            // Carrega schema completo (tabelas, views, triggers)
             await loadDatabaseSchema();
 
-            // 6️⃣ Se tinha um item selecionado, restaura baseado no tipo
             if (lastItem) {
                 if (lastItem.type === 'table') {
-                    // Pega a página salva
                     let savedPage = parseInt(localStorage.getItem('sqlite-studio-current-page') || '1');
 
-                    // Verifica se a tabela existe
                     const { db } = await import('./state.js');
 
                     const tablesResult = await db.query(
@@ -131,7 +106,6 @@ async function initialize() {
                     if (tableNames.includes(lastItem.name)) {
                         setCurrentTable(lastItem.name);
 
-                        // 🔥 CONTA TOTAL DE REGISTROS PRA VALIDAR A PÁGINA
                         const countResult = await db.query(
                             `SELECT COUNT(*) as count FROM ${lastItem.name}`,
                             []
@@ -139,7 +113,6 @@ async function initialize() {
                         const total = countResult.result?.resultRows[0]?.count || 0;
                         const totalPages = Math.ceil(total / pageSize);
 
-                        // 🔥 VALIDA SE A PÁGINA SALVA É VÁLIDA
                         if (savedPage > totalPages) {
                             savedPage = 1;
                             localStorage.setItem('sqlite-studio-current-page', '1');
@@ -161,10 +134,8 @@ async function initialize() {
                     }
 
                 } else if (lastItem.type === 'view') {
-                    // Pega a página salva para views
                     let savedPage = parseInt(localStorage.getItem('sqlite-studio-current-page') || '1');
 
-                    // Verifica se a view existe
                     const { db, pageSize } = await import('./state.js');
 
                     const viewsResult = await db.query(
@@ -179,20 +150,17 @@ async function initialize() {
                         setCurrentView(lastItem.name);
 
                         try {
-                            // 🔥 TENTA CONTAR TOTAL DE REGISTROS PRA VALIDAR A PÁGINA
                             let total = 0;
                             try {
                                 const countResult = await db.query(`SELECT COUNT(*) as count FROM ${lastItem.name}`, []);
                                 total = countResult.result?.resultRows[0]?.count || 0;
                             } catch (e) {
-                                // Se não conseguir contar, usa LIMIT 1 pra estimar
                                 const testResult = await db.query(`SELECT * FROM ${lastItem.name} LIMIT 1`, []);
                                 total = testResult.result?.resultRows?.length || 1;
                             }
 
                             const totalPages = Math.ceil(total / pageSize);
 
-                            // 🔥 VALIDA SE A PÁGINA SALVA É VÁLIDA
                             if (savedPage > totalPages) {
                                 savedPage = 1;
                                 localStorage.setItem('sqlite-studio-current-page', '1');
@@ -268,7 +236,6 @@ async function initialize() {
                 }
             }
         } else {
-            // 7⃣ Se não, mostra mensagem de no database
             setCurrentDatabase(null);
             setCurrentTable(null);
             setCurrentView(null);
@@ -277,11 +244,9 @@ async function initialize() {
         }
 
         toggleDeleteButton(!!lastDb);
-        // 8️⃣ Atualiza dropdown
         updateDatabaseSelector();
         await populateDatabaseDropdown();
 
-        // 9️⃣ Atualiza botão Run
         setTimeout(() => {
             updateRunButtonState();
         }, 150);
@@ -292,11 +257,8 @@ async function initialize() {
     }
 }
 
-
-// ===== EVENT LISTENERS =====
 function setupEventListeners() {
 
-    // Database selector
     if (elements.dbSelector) {
         elements.dbSelector.addEventListener('click', toggleDropdown);
     }
@@ -307,7 +269,6 @@ function setupEventListeners() {
         }
     });
 
-    // Refresh button
     if (elements.refreshBtn) {
         elements.refreshBtn.addEventListener('click', async () => {
             const databases = await scanOPFSDatabases();
@@ -316,7 +277,6 @@ function setupEventListeners() {
         });
     }
 
-    // New Database button
     const newDbBtn = document.getElementById('newDbBtn');
     if (newDbBtn) {
         newDbBtn.addEventListener('click', async () => {
@@ -328,24 +288,12 @@ function setupEventListeners() {
         });
     }
 
-    function toggleDeleteButton(show) {
-        const deleteBtn = document.getElementById('deleteDbBtn');
-        if (deleteBtn) {
-            if (show) {
-                deleteBtn.classList.remove('hidden');
-            } else {
-                deleteBtn.classList.add('hidden');
-            }
-        }
-    }
-
-    // 🔥 NOVO: Delete Database button
     const deleteDbBtn = document.getElementById('deleteDbBtn');
     if (deleteDbBtn) {
         deleteDbBtn.addEventListener('click', async () => {
             const { currentDatabase, setCurrentDatabase, setAvailableDatabases } = await import('./state.js');
             const { switchDatabase, updateDatabaseSelector, populateDatabaseDropdown } = await import('./ui.js');
-            const { scanOPFSDatabases } = await import('./database.js');  // ← AQUI!
+            const { scanOPFSDatabases } = await import('./database.js');
 
             if (!currentDatabase) {
                 alert('No database selected');
@@ -355,19 +303,14 @@ function setupEventListeners() {
             if (confirm(`Delete database "${currentDatabase}"?`)) {
                 try {
 
-                    // Fecha o banco atual primeiro
-                    // const { close } = await import('/sqlite-wasm.js');
                     await close();
 
-                    // Deleta o arquivo via OPFS
                     const root = await navigator.storage.getDirectory();
                     await root.removeEntry(currentDatabase);
 
-                    // Atualiza a lista de bancos
                     const databases = await scanOPFSDatabases();
                     setAvailableDatabases(databases);
 
-                    // Limpa o estado do front
                     await switchDatabase(null);
                     toggleDeleteButton(false);
                     await updateDatabaseSelector();
@@ -381,7 +324,6 @@ function setupEventListeners() {
         });
     }
 
-    // ===== EDITOR =====
     if (elements.sqlEditor) {
 
         elements.sqlEditor.addEventListener('input', () => {
@@ -397,12 +339,10 @@ function setupEventListeners() {
         });
     }
 
-    // Run button
     if (elements.runBtn) {
         elements.runBtn.addEventListener('click', runQuery);
     }
 
-    // Clear button
     if (elements.clearBtn) {
         elements.clearBtn.addEventListener('click', () => {
             elements.sqlEditor.value = '';
@@ -411,7 +351,6 @@ function setupEventListeners() {
         });
     }
 
-    // Format button
     if (elements.formatBtn) {
         elements.formatBtn.addEventListener('click', () => {
             const sql = elements.sqlEditor.value;
@@ -425,7 +364,6 @@ function setupEventListeners() {
         });
     }
 
-    // Page size
     const pageSizeSelect = document.getElementById('pageSize');
     if (pageSizeSelect) {
         pageSizeSelect.addEventListener('change', async () => {
@@ -442,7 +380,6 @@ function setupEventListeners() {
         });
     }
 
-    // Export buttons
     if (elements.exportCsvBtn) {
         elements.exportCsvBtn.addEventListener('click', exportCSV);
     }
@@ -451,7 +388,6 @@ function setupEventListeners() {
         elements.exportJsonBtn.addEventListener('click', exportJSON);
     }
 
-    // Theme toggle
     if (elements.themeToggle) {
         elements.themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light');
@@ -459,18 +395,15 @@ function setupEventListeners() {
             if (icon) {
                 const isLight = document.body.classList.contains('light');
                 icon.className = isLight ? 'fas fa-sun' : 'fas fa-moon';
-                // 💾 SALVA O TEMA
                 localStorage.setItem('sqlite-studio-theme', isLight ? 'light' : 'dark');
             }
         });
     }
 }
 
-// ===== EXPOSE FUNCTIONS GLOBALMENTE =====
 window.updateRunButtonState = updateRunButtonState;
 window.runQuery = runQuery;
 
-// ===== START =====
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     initialize();

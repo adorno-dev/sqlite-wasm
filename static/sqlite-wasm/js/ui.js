@@ -8,7 +8,6 @@ import {
 import { loadTableData, createNewDatabase } from './database.js';
 import { toggleDeleteButton } from './studio.js'
 
-// ===== DROPDOWN FUNCTIONS =====
 export function toggleDropdown(e) {
     e.stopPropagation();
     if (elements.dbDropdown) {
@@ -129,8 +128,6 @@ export async function switchDatabase(dbName) {
     await populateDatabaseDropdown();
 }
 
-
-// ===== TREE UPDATES =====
 export function updateTreeTables(tables) {
     if (!elements.treeTables) return;
 
@@ -178,11 +175,10 @@ export function updateTreeTables(tables) {
                 name: table
             }));
 
-            // 🔥 RESETA A PÁGINA PARA 1
             localStorage.setItem('sqlite-studio-current-page', '1');
             setCurrentPage(1);
 
-            loadTableData(table, 1);  // ← PASSA PÁGINA 1
+            loadTableData(table, 1);
             item.classList.add('active');
         });
     });
@@ -227,17 +223,15 @@ export function updateTreeViews(views) {
                 name: viewName
             }));
 
-            // 🔥 RESETA A PÁGINA PARA 1
             localStorage.setItem('sqlite-studio-current-page', '1');
             setCurrentPage(1);
 
             item.classList.add('active');
-            loadViewData(viewName, 1);  // ← PASSA PÁGINA 1
+            loadViewData(viewName, 1);
         });
     });
 }
 
-// 🔥 MODIFICADA PARA RECEBER PÁGINA
 async function loadViewData(viewName, page = 1) {
     const { db, setCurrentView, setTotalRows, pageSize } = await import('./state.js');
     const { setCurrentTable } = await import('./state.js');
@@ -252,12 +246,10 @@ async function loadViewData(viewName, page = 1) {
 
         elements.resultsHeader.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading view...`;
 
-        // 🔥 USA A PÁGINA RECEBIDA
         const offset = (page - 1) * pageSize;
         const result = await db.query(`SELECT * FROM ${viewName} LIMIT ${pageSize} OFFSET ${offset}`, []);
         const rows = result.result?.resultRows || [];
 
-        // Tenta contar total (opcional)
         let total = rows.length;
         try {
             const countResult = await db.query(`SELECT COUNT(*) as count FROM ${viewName}`, []);
@@ -331,7 +323,6 @@ export function updateTreeTriggers(triggers) {
     });
 }
 
-// ===== UI STATE MESSAGES =====
 export function showNoDatabases() {
     if (elements.resultsHeader) {
         elements.resultsHeader.innerHTML = `<i class="fas fa-database"></i> No Database`;
@@ -411,7 +402,6 @@ export function showNoResults() {
     }
 }
 
-// ===== RUN BUTTON STATE =====
 export function updateRunButtonState() {
     if (!elements.runBtn) return;
 
@@ -426,7 +416,6 @@ export function updateRunButtonState() {
     });
 }
 
-// ===== UI RENDERING =====
 export function renderTable(rows) {
     if (!rows || rows.length === 0 || !elements.tableWrapper) {
         showNoResults();
@@ -466,7 +455,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// ===== PAGINATION =====
 export function updatePagination() {
     if (!elements.paginationInfo) return;
 
@@ -482,16 +470,13 @@ export function updatePagination() {
 
     let pageNumbersHtml = '';
     if (totalPages > 0) {
-        // Calcula o range de páginas a mostrar (sempre 5 páginas ao redor da atual)
         let startPage = Math.max(1, currentPage - 2);
         let endPage = Math.min(totalPages, startPage + 4);
 
-        // Ajusta se estiver no final
         if (endPage - startPage < 4) {
             startPage = Math.max(1, endPage - 4);
         }
 
-        // Primeira página se não estiver no início
         if (startPage > 1) {
             pageNumbersHtml += `<button class="btn-small page-number" data-page="1">1</button>`;
             if (startPage > 2) {
@@ -499,13 +484,11 @@ export function updatePagination() {
             }
         }
 
-        // Páginas do range
         for (let i = startPage; i <= endPage; i++) {
             const activeClass = i === currentPage ? 'active' : '';
             pageNumbersHtml += `<button class="btn-small page-number ${activeClass}" data-page="${i}">${i}</button>`;
         }
 
-        // Última página se não estiver no final
         if (endPage < totalPages) {
             if (endPage < totalPages - 1) {
                 pageNumbersHtml += `<span class="page-separator">...</span>`;
@@ -515,7 +498,6 @@ export function updatePagination() {
     }
     elements.pageNumbers.innerHTML = pageNumbersHtml;
 
-    // Remove event listeners antigos e adiciona novos
     document.querySelectorAll('.page-number').forEach(btn => {
         btn.addEventListener('click', () => {
             const page = parseInt(btn.dataset.page);
@@ -566,7 +548,6 @@ export function updatePagination() {
     }
 }
 
-// ===== EXPORT FUNCTIONS =====
 export function exportCSV() {
     if (!lastResults || lastResults.length === 0) return;
 

@@ -1,6 +1,5 @@
 // static/js/database.js
 
-// const wasm = await import('/sqlite-wasm.js');
 import * as wasm from '/sqlite-wasm.js';
 const { initialize_worker, open, close } = wasm;
 
@@ -18,12 +17,10 @@ import {
 } from './ui.js';
 import { toggleDeleteButton } from './studio.js'
 
-// No início do database.js, após os imports
 let workerInitialized = false;
 
 async function ensureWorker() {
     if (!workerInitialized) {
-        // const { initialize_worker } = await import('/sqlite-wasm.js');
         await initialize_worker('/sqlite.org/sqlite3-worker1.js');
         workerInitialized = true;
     }
@@ -32,9 +29,6 @@ async function ensureWorker() {
 export async function createNewDatabase(dbName) {
     
     try {
-        // const { open } = await import('/sqlite-wasm.js');
-        const { setCurrentDatabase, availableDatabases, setAvailableDatabases } = await import('./state.js');
-        
         await open(dbName);
         
         setCurrentDatabase(dbName);
@@ -85,12 +79,10 @@ export async function scanOPFSDatabases() {
 }
 
 export async function loadDatabaseSchema() {
-    const {db} = await import('./state.js');
     const currentDb = db;
     if (!currentDb) return;
     
     try {
-        // Carrega tabelas
         let tables = [];
         try {
             const tablesResult = await currentDb.query(
@@ -103,7 +95,6 @@ export async function loadDatabaseSchema() {
         }
         updateTreeTables(tables);
         
-        // Carrega views
         let views = [];
         try {
             const viewsResult = await currentDb.query(
@@ -116,7 +107,6 @@ export async function loadDatabaseSchema() {
         }
         updateTreeViews(views);
         
-        // Carrega triggers
         let triggers = [];
         try {
             const triggersResult = await currentDb.query(
@@ -133,7 +123,6 @@ export async function loadDatabaseSchema() {
             const firstTable = tables[0].name || tables[0];
             setCurrentTable(firstTable);
             await loadTableData(firstTable);
-            // Importa e chama a função de marcar
             const { markActiveTreeItem } = await import('./ui.js');
             markActiveTreeItem('table', firstTable);
         } else {
@@ -156,7 +145,6 @@ export async function loadTableData(tableName, page = 1) {
     }         
     
     try {
-        // Se a página for 1 (padrão), tenta recuperar a página salva
         if (page === 1) {
             const savedPage = localStorage.getItem('sqlite-studio-current-page');
             if (savedPage) {
@@ -182,7 +170,6 @@ export async function loadTableData(tableName, page = 1) {
         const total = countResult.result?.resultRows[0]?.count || 0;
         setTotalRows(total);
         
-        // Salva a página atual no storage
         localStorage.setItem('sqlite-studio-current-page', page.toString());
         
         if (rows.length === 0) {
@@ -234,7 +221,6 @@ export async function runQuery() {
         
         const upperSql = sql.toUpperCase();
         
-        // ATUALIZA SCHEMA PARA COMANDOS DDL
         if (upperSql.includes('CREATE TABLE') || 
             upperSql.includes('DROP TABLE') ||
             upperSql.includes('ALTER TABLE') ||
@@ -245,7 +231,6 @@ export async function runQuery() {
             await loadDatabaseSchema();
         }
         
-        // RECARREGA TABELA SELECIONADA PARA COMANDOS DML
         if (upperSql.includes('INSERT') || 
             upperSql.includes('UPDATE') || 
             upperSql.includes('DELETE')) {
