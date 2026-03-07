@@ -139,7 +139,7 @@ lto = false
 # Parallel compilation for speed
 codegen-units = 16
 # Use unwind panics for better stack traces when tests fail
-panic = "unwind"
+# panic = "unwind"
 # Keep all debug symbols for easier debugging of test failures
 strip = "none"
 

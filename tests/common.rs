@@ -21,8 +21,9 @@ pub fn setup() {
 }
 
 pub fn test_db_name() -> String {
-    let timestamp = js_sys::Date::now() as u64;
-    format!("test_db_{}.sqlite3", timestamp)
+    // let timestamp = js_sys::Date::now() as u64;
+    // format!("test_db_{}.sqlite3", timestamp)
+    "test_db.sqlite3".to_string()
 }
 
 pub fn js_array_to_vec(array: &Array) -> Vec<JsValue> {

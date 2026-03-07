@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite-WASM Test Suite</title>
+    <link rel="stylesheet" href="test.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-database"></i>
+            </div>
+            <div class="title">
+                <h1>SQLite-WASM Test Suite</h1>
+                <p>v0.1.3 • Embedded Worker • 41 testes</p>
+            </div>
+            <div class="stats" id="stats">
+                <span id="stats-text">0/41 passando</span>
+                <span class="badge" id="status-badge">⏳ Rodando...</span>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress" style="width: 0%">0%</div>
+            </div>
+
+            <!-- Test Output -->
+            <div class="test-output" id="output">
+                <div class="info"><i class="fas fa-info-circle"></i> Inicializando testes...</div>
+            </div>
+
+            <!-- Test Grid -->
+            <div class="test-grid" id="test-grid">
+                <div class="test-card" data-module="blobs">
+                    <div class="card-header">
+                        <i class="fas fa-file"></i>
+                        <h3>Blobs</h3>
+                        <span class="card-status" id="status-blobs">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-blobs">0</span>/
+                        <span class="total" id="total-blobs">6</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="bindings">
+                    <div class="card-header">
+                        <i class="fas fa-link"></i>
+                        <h3>Bindings</h3>
+                        <span class="card-status" id="status-bindings">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-bindings">0</span>/
+                        <span class="total" id="total-bindings">6</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="worker">
+                    <div class="card-header">
+                        <i class="fas fa-cogs"></i>
+                        <h3>Worker</h3>
+                        <span class="card-status" id="status-worker">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-worker">0</span>/
+                        <span class="total" id="total-worker">9</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="database">
+                    <div class="card-header">
+                        <i class="fas fa-table"></i>
+                        <h3>Database</h3>
+                        <span class="card-status" id="status-database">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-database">0</span>/
+                        <span class="total" id="total-database">15</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="batch">
+                    <div class="card-header">
+                        <i class="fas fa-layer-group"></i>
+                        <h3>Batch</h3>
+                        <span class="card-status" id="status-batch">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-batch">0</span>/
+                        <span class="total" id="total-batch">6</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="pool">
+                    <div class="card-header">
+                        <i class="fas fa-water"></i>
+                        <h3>Pool</h3>
+                        <span class="card-status" id="status-pool">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-pool">0</span>/
+                        <span class="total" id="total-pool">7</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="prepared">
+                    <div class="card-header">
+                        <i class="fas fa-rocket"></i>
+                        <h3>Prepared</h3>
+                        <span class="card-status" id="status-prepared">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-prepared">0</span>/
+                        <span class="total" id="total-prepared">6</span>
+                    </div>
+                </div>
+
+                <div class="test-card" data-module="queries">
+                    <div class="card-header">
+                        <i class="fas fa-search"></i>
+                        <h3>Queries</h3>
+                        <span class="card-status" id="status-queries">⏳</span>
+                    </div>
+                    <div class="card-stats">
+                        <span class="pass" id="pass-queries">0</span>/
+                        <span class="total" id="total-queries">5</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <i class="fas fa-clock"></i> 
+                <span id="timer">0s</span> • 
+                <i class="fas fa-check-circle"></i> 
+                <span id="passed-count">0</span> passed • 
+                <i class="fas fa-times-circle"></i> 
+                <span id="failed-count">0</span> failed
+            </div>
+        </div>
+    </div>
+
+    <script src="test.js"></script>
+</body>
+</html>

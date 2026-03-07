@@ -219,7 +219,7 @@ pub async fn wait_for_worker() -> Result<(), JsValue> {
 /// # Panics
 /// Panics if called before worker is initialized (programming error).
 #[inline(always)]
-fn get_worker() -> &'static Worker {
+pub fn get_worker() -> &'static Worker {
     WORKER.get().expect("Worker not initialized")
 }
 

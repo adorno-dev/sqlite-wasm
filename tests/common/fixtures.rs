@@ -1,7 +1,10 @@
 //! Test data fixtures
 
+#[allow(unused)]
+use js_sys::Array;
 use wasm_bindgen::JsValue;
 
+/// SQL statements for testing
 pub mod sql {
     pub const CREATE_USERS: &str = r#"
         CREATE TABLE IF NOT EXISTS users (
@@ -46,6 +49,7 @@ pub mod sql {
     pub const DELETE_USER: &str = "DELETE FROM users WHERE id = ?";
 }
 
+/// Test data
 pub mod data {
     use super::*;
 
