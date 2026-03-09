@@ -248,3 +248,4 @@ else
     echo "🌐 Server not started (SERVER_ENABLED=$SERVER_ENABLED)"
     echo "   To start manually: cd dist && node server.js"
 fi
+
