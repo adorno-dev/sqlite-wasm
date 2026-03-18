@@ -4,7 +4,7 @@ name = "sqlite-wasm"
 # Brief description of what this crate does
 description = "A high-performance SQLite wrapper for WebAssembly with OPFS support"
 # Semantic version following semver rules
-version = "0.1.3"
+version = "0.1.4"
 # Rust edition (2024 is the latest, determines available features)
 edition = "2024"
 # Author information in "Name <email>" format
