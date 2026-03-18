@@ -7,8 +7,10 @@
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://rust-lang.org)
 [![WASM](https://img.shields.io/badge/target-wasm32-purple.svg)](https://webassembly.org)
 
-A high-performance SQLite wrapper for WebAssembly with OPFS support
-Zero external files · Plug-and-play · Works in Chrome and Firefox
+A high-performance Rust wrapper for the official SQLite WebAssembly build with OPFS support  
+Unmodified sqlite.org WASM · Zero external files · Plug-and-play · Chrome & Firefox  
+
+> ⚡ Designed for Rust developers who want a zero-config SQLite experience in the browser.
 
 --------------------------------------------------------------------
 
@@ -16,7 +18,7 @@ Zero external files · Plug-and-play · Works in Chrome and Firefox
 
 | Icon | Feature | Description |
 |------|---------|-------------|
-| 🚀 | **Zero-cost abstractions** | Worker management with `OnceLock` and atomic counters |
+| 🚀 | **Zero-cost abstractions** | Lock-free worker management with `OnceLock` and atomics |
 | 🔒 | **OPFS persistence** | Databases survive page reloads and browser restarts |
 | 🧵 | **Web Worker** | Database operations run in a separate thread |
 | 📦 | **Auto-minification** | JS glue code automatically minified (Brotli/Gzip) |
@@ -25,14 +27,13 @@ Zero external files · Plug-and-play · Works in Chrome and Firefox
 | 🔄 | **Async/Await** | Promise-based API for JavaScript |
 | ⚡ | **Atomic operations** | Lock-free message passing with `AtomicU32` |
 
-
 --------------------------------------------------------------------
 
 🚀 Test It Live
 ====================================================================
 
-👉 Try SQLite Studio Online: https://sqlite-wasm.adorno-dev.workers.dev/
-No installation needed · Opens directly in your browser
+👉 Try SQLite Studio Online: https://sqlite-wasm.adorno-dev.workers.dev/  
+No installation needed · Opens directly in your browser  
 
 --------------------------------------------------------------------
 
@@ -56,50 +57,43 @@ trunk build --release
 🏗️ Architecture
 ====================================================================
 
-                    ┌─────────────────┐
-                    │   Your App      │
-                    │   (Rust/JS)     │
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │   sqlite-wasm   │
-                    │   ┌────────────┐│
-                    │   │   Worker   ││  Singleton, auto-managed
-                    │   │   Manager  ││
-                    │   └────────────┘│
-                    │   ┌────────────┐│
-                    │   │  Embedded  ││  Files via include_bytes!
-                    │   │   Assets   ││  (Blob/Data URLs)
-                    │   └────────────┘│
-                    │   ┌────────────┐│
-                    │   │    OPFS    ││  Persistent storage
-                    │   │   Storage  ││
-                    │   └────────────┘│
-                    └────────┬────────┘
-                             │
-                    ┌────────▼────────┐
-                    │  SQLite Worker  │
-                    │  (JavaScript)   │
-                    └─────────────────┘
+                    ┌────────────────────────────┐
+                    │        Your App            │
+                    │        (Rust/JS)           │
+                    └────────────┬───────────────┘
+                                 │
+                    ┌────────────▼───────────────┐
+                    │        sqlite-wasm         │
+                    │   ┌──────────────────────┐ │
+                    │   │    Worker Manager    │ │  Singleton, auto-managed
+                    │   └──────────────────────┘ │
+                    │   ┌──────────────────────┐ │
+                    │   │   Embedded Assets    │ │  include_bytes! (Blob/Data URLs)
+                    │   └──────────────────────┘ │
+                    │   ┌──────────────────────┐ │
+                    │   │     OPFS Storage     │ │  Persistent storage
+                    │   └──────────────────────┘ │
+                    └────────────┬───────────────┘
+                                 │
+                    ┌────────────▼───────────────┐
+                    │ Official SQLite WASM Worker│
+                    │        (JavaScript)        │
+                    └────────────────────────────┘
 
 --------------------------------------------------------------------
 
 📋 API REFERENCE
 ====================================================================
 
-autostart_embedded() → Initializes worker with embedded files
+autostart_embedded() → Initializes worker with embedded files  
+autostart(path) → Legacy: initializes with external file  
 
-autostart(path) → Legacy: initializes with external file
+open(name) → Opens or creates a database  
+exec(sql, params) → Executes SQL without returning rows  
+query(sql, params) → Executes SELECT and returns rows  
 
-open(name) → Opens or creates a database
-
-exec(sql, params) → Executes SQL without returning rows
-
-query(sql, params) → Executes SELECT and returns rows
-
-close() → Closes the current database
-
-is_open() → Checks if a database is open
+close() → Closes the current database  
+is_open() → Checks if a database is open  
 
 ====================================================================
 
@@ -181,10 +175,10 @@ start();
 🌍 Browser Requirements
 ====================================================================
 
-- WebAssembly support
-- Web Workers
-- OPFS (Origin Private File System)
-- COOP/COEP headers (Cross-Origin Isolation)
+- WebAssembly support  
+- Web Workers  
+- OPFS (Origin Private File System)  
+- COOP/COEP headers (Cross-Origin Isolation)  
 
 Works in Chrome, Firefox, and other modern browsers.
 
@@ -193,11 +187,27 @@ Works in Chrome, Firefox, and other modern browsers.
 🧪 How It Works
 ====================================================================
 
-1. Embedding: All SQLite files are embedded at compile time using include_bytes!
-2. URL creation: Files become Blob URLs (Chrome) or Data URLs (Firefox)
-3. Worker wrapper: Intercepts importScripts and fetch
-4. File mapping: Original filenames map to embedded URLs
-5. Zero external files: Everything runs from memory
+1. Embedding: The official SQLite WASM files are embedded at compile time using include_bytes!  
+2. URL creation: Files become Blob URLs (Chrome) or Data URLs (Firefox)  
+3. Worker wrapper: Intercepts importScripts and fetch  
+4. File mapping: Original filenames map to embedded URLs  
+5. Zero external files: Everything runs from memory  
+
+--------------------------------------------------------------------
+
+🙏 Credits
+====================================================================
+
+This project uses the official SQLite WebAssembly build provided by sqlite.org, without modifications.
+
+This library is a thin Rust wrapper and integration layer designed to make SQLite easier to use in WebAssembly environments.
+
+SQLite is developed by the SQLite authors and released into the public domain.  
+All credit for the database engine goes to the SQLite project.
+
+This project is not affiliated with or endorsed by the SQLite project.
+
+SQLite is a trademark of the SQLite Consortium.
 
 --------------------------------------------------------------------
 
@@ -208,5 +218,5 @@ MIT © adorno-dev (https://github.com/adorno-dev)
 
 --------------------------------------------------------------------
 
-Built with 🦀 and ❤️
-Made in Rust · Runs in Browser · Powered by SQLite
+Built with 🦀 and ❤️  
+Made in Rust · Runs in Browser · Powered by the official SQLite WASM (sqlite.org)
